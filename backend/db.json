@@ -1,0 +1,431 @@
+{
+  "employees": [
+    {
+      "id": "EMP007",
+      "name": "Jane Doe",
+      "email": "jane@company.com",
+      "password": "password",
+      "role": "Employee",
+      "department": "Sales",
+      "designation": "Junior Sales Representative",
+      "joinDate": "2026-06-04",
+      "status": "Active",
+      "salary": 60000,
+      "leaveBalance": {
+        "casual": 12,
+        "medical": 10,
+        "earned": 18
+      },
+      "attendanceStats": {
+        "checkInCount": 0,
+        "totalHours": 0,
+        "onTimeRate": 100
+      },
+      "performanceScore": 85,
+      "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane Doe"
+    },
+    {
+      "id": "EMP001",
+      "name": "Satyam Sharma",
+      "email": "satyam@company.com",
+      "role": "Admin",
+      "department": "Executive",
+      "designation": "Chief Technology Officer",
+      "joinDate": "2025-06-04",
+      "status": "Active",
+      "salary": 150000,
+      "leaveBalance": {
+        "casual": 12,
+        "medical": 10,
+        "earned": 18
+      },
+      "attendanceStats": {
+        "checkInCount": 22,
+        "totalHours": 176,
+        "onTimeRate": 98
+      },
+      "performanceScore": 95,
+      "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Satyam"
+    },
+    {
+      "id": "EMP002",
+      "name": "Rajesh Kumar",
+      "email": "rajesh@company.com",
+      "role": "Senior Manager",
+      "department": "Engineering",
+      "designation": "Engineering Director",
+      "joinDate": "2025-08-28",
+      "status": "Active",
+      "salary": 120000,
+      "leaveBalance": {
+        "casual": 8,
+        "medical": 9,
+        "earned": 15
+      },
+      "attendanceStats": {
+        "checkInCount": 20,
+        "totalHours": 158,
+        "onTimeRate": 90
+      },
+      "performanceScore": 91,
+      "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Rajesh"
+    },
+    {
+      "id": "EMP003",
+      "name": "Sarah Jenkins",
+      "email": "sarah.j@company.com",
+      "role": "HR Recruiter",
+      "department": "Human Resources",
+      "designation": "Lead Talent Acquisition",
+      "joinDate": "2025-12-06",
+      "status": "Active",
+      "salary": 80000,
+      "leaveBalance": {
+        "casual": 10,
+        "medical": 7,
+        "earned": 12
+      },
+      "attendanceStats": {
+        "checkInCount": 21,
+        "totalHours": 165,
+        "onTimeRate": 95
+      },
+      "performanceScore": 88,
+      "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
+    },
+    {
+      "id": "EMP004",
+      "name": "Amit Patel",
+      "email": "amit@company.com",
+      "role": "Employee",
+      "department": "Engineering",
+      "designation": "Senior Frontend Engineer",
+      "joinDate": "2026-02-04",
+      "status": "Active",
+      "salary": 95000,
+      "leaveBalance": {
+        "casual": 10,
+        "medical": 8,
+        "earned": 14
+      },
+      "attendanceStats": {
+        "checkInCount": 19,
+        "totalHours": 150,
+        "onTimeRate": 92
+      },
+      "performanceScore": 90,
+      "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Amit"
+    },
+    {
+      "id": "EMP005",
+      "name": "Priya Nair",
+      "email": "priya@company.com",
+      "role": "Employee",
+      "department": "Sales",
+      "designation": "Enterprise Account Manager",
+      "joinDate": "2026-03-06",
+      "status": "Active",
+      "salary": 75000,
+      "leaveBalance": {
+        "casual": 11,
+        "medical": 6,
+        "earned": 11
+      },
+      "attendanceStats": {
+        "checkInCount": 18,
+        "totalHours": 140,
+        "onTimeRate": 85
+      },
+      "performanceScore": 84,
+      "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Priya"
+    },
+    {
+      "id": "EMP006",
+      "name": "John Doe",
+      "email": "john.doe@company.com",
+      "role": "Employee",
+      "department": "Finance",
+      "designation": "Senior Financial Analyst",
+      "joinDate": "2025-11-16",
+      "status": "Active",
+      "salary": 88000,
+      "leaveBalance": {
+        "casual": 6,
+        "medical": 5,
+        "earned": 8
+      },
+      "attendanceStats": {
+        "checkInCount": 20,
+        "totalHours": 160,
+        "onTimeRate": 95
+      },
+      "performanceScore": 89,
+      "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=John"
+    }
+  ],
+  "attendance": [
+    {
+      "id": "ATT001",
+      "employeeId": "EMP001",
+      "date": "2026-06-03",
+      "checkInTime": "09:02:15",
+      "checkOutTime": "18:05:00",
+      "hoursWorked": 9,
+      "status": "On Time"
+    },
+    {
+      "id": "ATT002",
+      "employeeId": "EMP002",
+      "date": "2026-06-03",
+      "checkInTime": "09:45:10",
+      "checkOutTime": "17:40:00",
+      "hoursWorked": 8,
+      "status": "Late"
+    },
+    {
+      "id": "ATT003",
+      "employeeId": "EMP003",
+      "date": "2026-06-03",
+      "checkInTime": "08:55:00",
+      "checkOutTime": "18:00:00",
+      "hoursWorked": 9,
+      "status": "On Time"
+    },
+    {
+      "id": "ATT004",
+      "employeeId": "EMP004",
+      "date": "2026-06-03",
+      "checkInTime": "09:05:00",
+      "checkOutTime": "18:15:00",
+      "hoursWorked": 9.1,
+      "status": "On Time"
+    },
+    {
+      "id": "ATT005",
+      "employeeId": "EMP005",
+      "date": "2026-06-03",
+      "checkInTime": "10:15:00",
+      "checkOutTime": "18:00:00",
+      "hoursWorked": 7.75,
+      "status": "Late"
+    },
+    {
+      "id": "ATT006",
+      "employeeId": "EMP006",
+      "date": "2026-06-03",
+      "checkInTime": "08:50:00",
+      "checkOutTime": "17:55:00",
+      "hoursWorked": 9,
+      "status": "On Time"
+    },
+    {
+      "id": "ATT007",
+      "employeeId": "EMP001",
+      "date": "2026-06-02",
+      "checkInTime": "08:58:00",
+      "checkOutTime": "18:00:00",
+      "hoursWorked": 9,
+      "status": "On Time"
+    },
+    {
+      "id": "ATT008",
+      "employeeId": "EMP002",
+      "date": "2026-06-02",
+      "checkInTime": "09:00:00",
+      "checkOutTime": "18:30:00",
+      "hoursWorked": 9.5,
+      "status": "On Time"
+    },
+    {
+      "id": "ATT009",
+      "employeeId": "EMP003",
+      "date": "2026-06-02",
+      "checkInTime": "09:12:00",
+      "checkOutTime": "18:00:00",
+      "hoursWorked": 8.8,
+      "status": "Late"
+    },
+    {
+      "id": "ATT010",
+      "employeeId": "EMP004",
+      "date": "2026-06-02",
+      "checkInTime": "09:02:00",
+      "checkOutTime": "18:05:00",
+      "hoursWorked": 9,
+      "status": "On Time"
+    },
+    {
+      "id": "ATT011",
+      "employeeId": "EMP005",
+      "date": "2026-06-02",
+      "checkInTime": "09:00:00",
+      "checkOutTime": "17:30:00",
+      "hoursWorked": 8.5,
+      "status": "On Time"
+    },
+    {
+      "id": "ATT012",
+      "employeeId": "EMP006",
+      "date": "2026-06-02",
+      "checkInTime": "08:52:00",
+      "checkOutTime": "17:50:00",
+      "hoursWorked": 9,
+      "status": "On Time"
+    }
+  ],
+  "leaves": [
+    {
+      "id": "LV001",
+      "employeeId": "EMP004",
+      "employeeName": "Amit Patel",
+      "leaveType": "Casual",
+      "startDate": "2026-06-06",
+      "endDate": "2026-06-08",
+      "totalDays": 3,
+      "reason": "Family gathering attending cousin marriage",
+      "status": "Pending",
+      "approvedBy": null
+    },
+    {
+      "id": "LV002",
+      "employeeId": "EMP005",
+      "employeeName": "Priya Nair",
+      "leaveType": "Medical",
+      "startDate": "2026-05-30",
+      "endDate": "2026-05-31",
+      "totalDays": 2,
+      "reason": "Severe fever and dental checkup",
+      "status": "Approved",
+      "approvedBy": "Rajesh Kumar"
+    },
+    {
+      "id": "LV003",
+      "employeeId": "EMP006",
+      "employeeName": "John Doe",
+      "leaveType": "Earned",
+      "startDate": "2026-06-14",
+      "endDate": "2026-06-21",
+      "totalDays": 8,
+      "reason": "Annual family summer vacation trip",
+      "status": "Pending",
+      "approvedBy": null
+    }
+  ],
+  "jobs": [
+    {
+      "id": "JOB001",
+      "title": "Senior React Developer",
+      "department": "Engineering",
+      "type": "Full-time",
+      "location": "Remote (India)",
+      "status": "Open",
+      "description": "We are seeking an expert Frontend Engineer skilled in React.js, Tailwind CSS, and state management. The ideal candidate will create fluid user experiences and maintain core dashboard UI architectures.",
+      "candidatesCount": 3
+    },
+    {
+      "id": "JOB002",
+      "title": "Lead AI Engineer",
+      "department": "Engineering",
+      "type": "Full-time",
+      "location": "Hybrid (Bangalore)",
+      "status": "Open",
+      "description": "Looking for an AI engineer to integrate LLMs (Gemini, OpenAI) into enterprise flows. Experience with LangChain, vector databases, and speech models (Whisper/SpeechRecognition) is highly preferred.",
+      "candidatesCount": 1
+    },
+    {
+      "id": "JOB003",
+      "title": "HR Generalist",
+      "department": "Human Resources",
+      "type": "Full-time",
+      "location": "On-site",
+      "status": "Open",
+      "description": "Seeking an HR Specialist to run employee engagement, resolve queries, manage performance scorecards, and implement onboarding checklists.",
+      "candidatesCount": 2
+    }
+  ],
+  "candidates": [
+    {
+      "id": "CAN001",
+      "jobId": "JOB001",
+      "jobTitle": "Senior React Developer",
+      "name": "Karan Malhotra",
+      "email": "karan@malhotra.dev",
+      "resumeText": "KARAN MALHOTRA\nSenior Frontend Specialist\nkaran@malhotra.dev | +91 98765 43210\n\nPROFESSIONAL SUMMARY\nHighly competent React Developer with 5+ years of experience building responsive SaaS applications. Expert in React Hooks, Redux Toolkit, Tailwind CSS, and Vite.\n\nTECHNICAL SKILLS\n- Frontend: ReactJS, JavaScript (ES6+), TypeScript, HTML5, CSS3, Tailwind CSS, Sass\n- Tools: Vite, Webpack, Git, Docker, Jest, Cypress\n- State Management: Redux Toolkit, Context API, Zustand\n\nEXPERIENCE\nFrontend Developer | TechCorp Solutions (2022 - Present)\n- Architected the redesign of a core analytics dashboard, boosting performance by 35%.\n- Implemented responsive styles with Tailwind CSS, ensuring 100% mobile readiness.\n- Mentored 4 junior frontend developers.\n\nSoftware Engineer | DevSystems (2020 - 2022)\n- Built reusable UI components for an internal CRM.\n- Optimized network requests reducing data usage by 20%.\n\nEDUCATION\nB.Tech in Computer Science | Delhi Technological University (2016-2020)",
+      "matchScore": 92,
+      "status": "Interviewing",
+      "evaluation": {
+        "score": 92,
+        "strengths": [
+          "5+ years of robust React experience",
+          "Strong Tailwind styling capabilities",
+          "Experience with performance optimization"
+        ],
+        "weaknesses": [
+          "Has not worked extensively with backend technologies",
+          "Zustand knowledge is basic"
+        ],
+        "recommendation": "Highly Recommended. The technical resume perfectly matches our Senior React developer profile."
+      },
+      "interviewReport": {
+        "score": 88,
+        "confidence": "High",
+        "communication": "Excellent",
+        "technical": "Very Strong",
+        "feedback": "The candidate demonstrated a thorough understanding of React reconciliation, rendering cycles, and custom hooks. Communication was clear and structured. Confidently answered tricky Javascript prototype questions.",
+        "reportText": "Overall, Karan is an excellent fit. He demonstrated deep familiarity with component optimization, clean code practices, and displayed very good communication skills throughout the mock session."
+      }
+    },
+    {
+      "id": "CAN002",
+      "jobId": "JOB001",
+      "jobTitle": "Senior React Developer",
+      "name": "Nisha Sen",
+      "email": "nisha.sen@gmail.com",
+      "resumeText": "NISHA SEN\nNisha.sen@gmail.com | Bangalore\nReact UI Designer & Engineer\n\nSUMMARY:\nVibrant Frontend Developer with 3 years of experience. Specializes in beautiful interface design, transitions, React, and CSS.\n\nSKILLS:\nReact, Javascript, Tailwind, Framer Motion, HTML, CSS, Figma\n\nEXPERIENCE:\nUI Developer at CreativeWeb (2023-Present)\n- Developed aesthetic marketing landing pages and user dashboards.\n- Utilized Framer Motion for smooth animations and transitions.\n\nJunior Web Developer at PixelCraft (2021-2023)\n- Maintained legacy React projects, upgrading dependencies.",
+      "matchScore": 78,
+      "status": "Screening",
+      "evaluation": {
+        "score": 78,
+        "strengths": [
+          "Great aesthetic sense and design-to-code skills",
+          "Good knowledge of React and Framer Motion"
+        ],
+        "weaknesses": [
+          "Limited experience with large scale state management (Redux/Zustand)",
+          "Only 3 years total experience, which is on the lower side for a Senior role"
+        ],
+        "recommendation": "Recommended. Worth interviewing, but evaluate technical depth in systems architecture."
+      },
+      "interviewReport": null
+    },
+    {
+      "id": "CAN003",
+      "jobId": "JOB002",
+      "jobTitle": "Lead AI Engineer",
+      "name": "Vikram Aditya",
+      "email": "vikram.ai@gmail.com",
+      "resumeText": "VIKRAM ADITYA\nAI Research & Integration Engineer\nvikram.ai@gmail.com\n\nSUMMARY:\n4+ years developing machine learning and LLM agent architectures. Experienced in LangChain, OpenAI API, Gemini API, Python, and microservice deployments.\n\nSKILLS:\nPython, PyTorch, LangChain, Gemini API, RAG, Node.js, Docker, API Design\n\nEXPERIENCE:\nAI Solutions Architect | Innovate AI (2023-Present)\n- Built a multi-agent HR assistant chatbot saving HR 40% response times.\n- Designed vector databases using Pinecone and LangChain for internal search.",
+      "matchScore": 95,
+      "status": "Applied",
+      "evaluation": null,
+      "interviewReport": null
+    }
+  ],
+  "policies": [
+    {
+      "title": "Work From Home Policy",
+      "content": "All employees are allowed up to 2 days of work from home per week, subject to approval from their reporting manager. Core collaboration hours are between 11:00 AM and 4:00 PM. Check-in on the portal is required even when working from home."
+    },
+    {
+      "title": "Leave Policy",
+      "content": "Employees receive 12 casual leaves, 10 medical leaves, and 18 earned leaves annually, credited monthly. Leaves must be requested at least 3 days in advance except for medical emergencies. Unused casual and medical leaves expire at the end of the calendar year."
+    },
+    {
+      "title": "Performance & KPI Reviews",
+      "content": "Performance scores are evaluated on a quarterly basis. Scores above 90 receive excellent bonuses, while scores between 80-90 are eligible for general performance incentives. Performance metrics are tracked in the goals panel."
+    }
+  ],
+  "settings": {
+    "geminiKey": ""
+  }
+}
