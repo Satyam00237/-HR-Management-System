@@ -29,6 +29,22 @@ export default function RecruiterDashboard({ activeSubTab, refreshKey, onTrigger
   // Candidate Vetting States
   const [selectedVettingCand, setSelectedVettingCand] = useState(null);
   const [isVettingScreening, setIsVettingScreening] = useState(false);
+  const [schDate, setSchDate] = useState('');
+  const [schTime, setSchTime] = useState('');
+  const [isShortlisting, setIsShortlisting] = useState(false);
+
+  // Sync date/time when candidate is loaded
+  useEffect(() => {
+    if (selectedVettingCand) {
+      setSchDate(selectedVettingCand.interviewDate || '');
+      setSchTime(selectedVettingCand.interviewTime || '');
+      setIsShortlisting(selectedVettingCand.status === 'Interviewing');
+    } else {
+      setSchDate('');
+      setSchTime('');
+      setIsShortlisting(false);
+    }
+  }, [selectedVettingCand]);
 
   // Voice Interview States
   const [interviewJobId, setInterviewJobId] = useState('');
@@ -1150,41 +1166,144 @@ HR Generalist | FinTech Solutions (2023 - Present)
                     </button>
                   </div>
                 )}
+                {/* Interview Scheduling Card */}
+                {isShortlisting && (
+                  <div className="bg-slate-950/40 p-4 border border-slate-850 rounded-2xl space-y-3">
+                    <h5 className="text-xs font-bold text-slate-300 flex items-center gap-1.5 uppercase tracking-wider text-indigo-400">
+                      <Clock className="w-3.5 h-3.5" />
+                      Interview Schedule
+                    </h5>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Interview Date</label>
+                        <input
+                          type="date"
+                          value={schDate}
+                          onChange={(e) => setSchDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-850 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Interview Time</label>
+                        <input
+                          type="time"
+                          value={schTime}
+                          onChange={(e) => setSchTime(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-850 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+                    {selectedVettingCand.interviewDate && (
+                      <p className="text-[10px] text-emerald-405 font-bold">
+                        Current Schedule: {selectedVettingCand.interviewDate} at {selectedVettingCand.interviewTime}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Actions Footer */}
-            <div className="pt-4 border-t border-slate-800 flex justify-between gap-3">
-              <button
-                onClick={async () => {
-                  try {
-                    await apiService.updateCandidateStatus(selectedVettingCand.id, 'Rejected');
-                    setSelectedVettingCand(null);
-                    onTriggerRefresh();
-                    alert('Candidate status updated: Rejected');
-                  } catch (e) {
-                    alert('Failed to reject candidate.');
-                  }
-                }}
-                className="flex-1 py-2.5 bg-rose-500/10 hover:bg-rose-500/15 text-rose-400 text-xs font-bold rounded-xl border border-rose-500/20 hover:border-rose-500/35 transition-all"
-              >
-                Reject Candidate
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    await apiService.updateCandidateStatus(selectedVettingCand.id, 'Interviewing');
-                    setSelectedVettingCand(null);
-                    onTriggerRefresh();
-                    alert('Candidate status updated: Shortlisted for Interviews');
-                  } catch (e) {
-                    alert('Failed to shortlist candidate.');
-                  }
-                }}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl border border-emerald-500 shadow-md shadow-emerald-600/15 transition-all hover:scale-[1.01]"
-              >
-                Shortlist Candidate (Move to Interviews)
-              </button>
+            <div className="pt-4 border-t border-slate-800 flex flex-col gap-3">
+              {!isShortlisting ? (
+                <div className="flex justify-between gap-3 w-full">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await apiService.updateCandidateStatus(selectedVettingCand.id, 'Rejected');
+                        setSelectedVettingCand(null);
+                        onTriggerRefresh();
+                        alert('Candidate status updated: Rejected');
+                      } catch (e) {
+                        alert('Failed to reject candidate.');
+                      }
+                    }}
+                    className="flex-1 py-2.5 bg-rose-500/10 hover:bg-rose-500/15 text-rose-400 text-xs font-bold rounded-xl border border-rose-500/20 hover:border-rose-500/35 transition-all"
+                  >
+                    Reject Candidate
+                  </button>
+                  <button
+                    onClick={() => setIsShortlisting(true)}
+                    className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl border border-emerald-500 shadow-md shadow-emerald-600/15 transition-all hover:scale-[1.01]"
+                  >
+                    Shortlist Candidate
+                  </button>
+                </div>
+              ) : (
+                <div className="w-full">
+                  {selectedVettingCand.status !== 'Interviewing' ? (
+                    <div className="flex justify-between gap-3 w-full">
+                      <button
+                        onClick={() => {
+                          setIsShortlisting(false);
+                          setSchDate('');
+                          setSchTime('');
+                        }}
+                        className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-350 text-xs font-bold rounded-xl border border-slate-700 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!schDate || !schTime) {
+                            alert('Please select both Interview Date and Time.');
+                            return;
+                          }
+                          try {
+                            await apiService.updateCandidateStatus(selectedVettingCand.id, 'Interviewing', schDate, schTime);
+                            setSelectedVettingCand(null);
+                            onTriggerRefresh();
+                            alert('Candidate status updated: Shortlisted for Interviews');
+                          } catch (e) {
+                            alert('Failed to shortlist candidate.');
+                          }
+                        }}
+                        className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl border border-emerald-500 shadow-md shadow-emerald-600/15 transition-all hover:scale-[1.01]"
+                      >
+                        Confirm Schedule & Shortlist
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between gap-3 w-full">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await apiService.updateCandidateStatus(selectedVettingCand.id, 'Rejected');
+                            setSelectedVettingCand(null);
+                            onTriggerRefresh();
+                            alert('Candidate status updated: Rejected');
+                          } catch (e) {
+                            alert('Failed to reject candidate.');
+                          }
+                        }}
+                        className="flex-1 py-2.5 bg-rose-500/10 hover:bg-rose-500/15 text-rose-400 text-xs font-bold rounded-xl border border-rose-500/20 hover:border-rose-500/35 transition-all"
+                      >
+                        Reject Candidate
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!schDate || !schTime) {
+                            alert('Please select both Interview Date and Time.');
+                            return;
+                          }
+                          try {
+                            await apiService.updateCandidateStatus(selectedVettingCand.id, 'Interviewing', schDate, schTime);
+                            setSelectedVettingCand(null);
+                            onTriggerRefresh();
+                            alert('Candidate Interview Rescheduled Successfully.');
+                          } catch (e) {
+                            alert('Failed to reschedule candidate.');
+                          }
+                        }}
+                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-550 text-white text-xs font-bold rounded-xl border border-indigo-500 shadow-md transition-all hover:scale-[1.01]"
+                      >
+                        Update Schedule
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

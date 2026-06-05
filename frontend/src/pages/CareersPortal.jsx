@@ -3,7 +3,7 @@ import {
   Briefcase, FileText, CheckCircle, Clock, 
   User, Lock, Mail, Upload, Sparkles, LogOut, 
   MapPin, Calendar, ArrowLeft, Send, AlertCircle, Search, Building, ChevronRight,
-  Heart, Cpu, Globe, Award, Shield, Check
+  Heart, Cpu, Globe, Award, Shield, Check, Bell
 } from 'lucide-react';
 import { apiService } from '../api/apiService';
 
@@ -51,6 +51,7 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
   // Applications List States
   const [applications, setApplications] = useState([]);
   const [appsLoading, setAppsLoading] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Load Active Jobs
   useEffect(() => {
@@ -241,6 +242,12 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
     return matchSearch && matchDept;
   });
 
+  const isAlreadyApplied = (jobId) => {
+    return applications.some(app => app.jobId === jobId);
+  };
+
+  const notifications = applications.filter(app => ['Interviewing', 'Rejected', 'Offered'].includes(app.status));
+
   const getStatusStyle = (status) => {
     switch (status) {
       case 'Offered': return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20';
@@ -304,6 +311,85 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                 <p className="text-sm font-bold text-slate-200">{currentUser.name}</p>
                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/10">Candidate</span>
               </div>
+
+              {/* Notification Bell Dropdown Container */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className={`p-2 rounded-xl border transition-all relative ${
+                    showNotifications 
+                      ? 'bg-indigo-650 border-indigo-550 text-white shadow-md' 
+                      : 'bg-slate-900 border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-slate-255'
+                  }`}
+                  title="Notifications"
+                >
+                  <Bell className="w-4 h-4" />
+                  {notifications.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 border border-slate-950 rounded-full animate-pulse" />
+                  )}
+                </button>
+                
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2.5 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3">
+                    <div className="flex justify-between items-center border-b border-slate-805 pb-2">
+                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Alerts Center</h4>
+                      {notifications.length > 0 && (
+                        <span className="text-[9px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-md font-bold">
+                          {notifications.length} Message{notifications.length > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="max-h-60 overflow-y-auto space-y-2.5 divide-y divide-slate-850/60 scrollbar-thin pr-1">
+                      {notifications.length > 0 ? (
+                        notifications.map((app, idx) => (
+                          <div 
+                            key={app.id} 
+                            onClick={() => {
+                              setActiveTab('applications');
+                              setSelectedJob(null);
+                              setShowNotifications(false);
+                            }}
+                            className="pt-2.5 first:pt-0 cursor-pointer text-left hover:opacity-90 transition-opacity"
+                          >
+                            <div className="flex items-start gap-2.5">
+                              {app.status === 'Offered' && <Award className="w-4 h-4 text-emerald-455 shrink-0 mt-0.5" />}
+                              {app.status === 'Interviewing' && <Clock className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />}
+                              {app.status === 'Rejected' && <AlertCircle className="w-4 h-4 text-rose-455 shrink-0 mt-0.5" />}
+                              <div className="text-[11px] leading-relaxed">
+                                <p className="font-bold text-slate-200 leading-tight">{app.jobTitle}</p>
+                                {app.status === 'Offered' && (
+                                  <p className="text-emerald-400 font-semibold mt-0.5">🎉 Offered! Click to view details.</p>
+                                )}
+                                {app.status === 'Interviewing' && (
+                                  <div>
+                                    <p className="text-indigo-400 font-semibold mt-0.5">✨ Shortlisted for interview</p>
+                                    {app.interviewDate ? (
+                                      <p className="text-slate-400 text-[10px] mt-0.5">
+                                        Date: {app.interviewDate} at {app.interviewTime}
+                                      </p>
+                                    ) : (
+                                      <p className="text-slate-500 italic text-[10px] mt-0.5">Interview schedule pending</p>
+                                    )}
+                                  </div>
+                                )}
+                                {app.status === 'Rejected' && (
+                                  <p className="text-rose-400 mt-0.5">Application vetted (not selected).</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="py-6 text-center text-slate-500 text-[11px] font-semibold italic">
+                          No alerts right now.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button 
                 onClick={onLogout}
                 className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/10 border border-slate-800 hover:border-rose-500/20 text-slate-400 hover:text-rose-450 transition-all"
@@ -339,6 +425,56 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
         {/* ==================================================== */}
         {activeTab === 'jobs' && !selectedJob && (
           <div className="space-y-12">
+            
+            {/* Global Notifications Section */}
+            {currentUser && applications.some(app => ['Interviewing', 'Rejected', 'Offered'].includes(app.status)) && (
+              <div className="space-y-3 animate-fadeIn">
+                {applications
+                  .filter(app => ['Interviewing', 'Rejected', 'Offered'].includes(app.status))
+                  .map(app => (
+                    <div 
+                      key={app.id} 
+                      className={`p-4 border rounded-2xl flex items-center justify-between gap-4 shadow-lg transition-all ${
+                        app.status === 'Offered' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' :
+                        app.status === 'Interviewing' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300' :
+                        'bg-rose-500/5 border-rose-500/15 text-rose-350'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {app.status === 'Offered' && <Award className="w-5 h-5 shrink-0 text-emerald-400" />}
+                        {app.status === 'Interviewing' && <Clock className="w-5 h-5 shrink-0 text-indigo-400" />}
+                        {app.status === 'Rejected' && <AlertCircle className="w-5 h-5 shrink-0 text-rose-450" />}
+                        <div className="text-xs sm:text-sm">
+                          {app.status === 'Offered' && (
+                            <p>🎉 Congratulations! You have received a job offer for <strong className="text-slate-100">{app.jobTitle}</strong>.</p>
+                          )}
+                          {app.status === 'Interviewing' && (
+                            <div>
+                              <p>✨ You have been shortlisted for <strong className="text-slate-100 font-bold">{app.jobTitle}</strong>!</p>
+                              {app.interviewDate ? (
+                                <p className="mt-0.5 text-xs text-slate-400">
+                                  Scheduled Interview: <span className="text-slate-200 font-bold">{app.interviewDate}</span> at <span className="text-slate-200 font-bold">{app.interviewTime}</span>
+                                </p>
+                              ) : (
+                                <p className="mt-0.5 text-xs text-slate-450 italic">Interview schedule is pending.</p>
+                              )}
+                            </div>
+                          )}
+                          {app.status === 'Rejected' && (
+                            <p>Thank you for applying for the <strong className="text-slate-200 font-semibold">{app.jobTitle}</strong> role. Unfortunately, your application was not selected for further rounds at this time.</p>
+                          )}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => { setActiveTab('applications'); setSelectedJob(null); }} 
+                        className="text-xs font-bold underline shrink-0 hover:text-white transition-colors"
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
             
             {/* HERO SECTION */}
             <div className="text-center py-16 relative max-w-4xl mx-auto space-y-6">
@@ -445,12 +581,21 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                         >
                           View Details
                         </button>
-                        <button
-                          onClick={() => handleApplyClick(job)}
-                          className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-550 text-white text-sm font-semibold rounded-xl transition-colors shadow-md shadow-indigo-650/10"
-                        >
-                          Apply Now
-                        </button>
+                        {isAlreadyApplied(job.id) ? (
+                          <button
+                            disabled
+                            className="flex-1 py-2.5 bg-slate-800 text-slate-500 border border-slate-700 text-sm font-semibold rounded-xl cursor-not-allowed"
+                          >
+                            Applied
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleApplyClick(job)}
+                            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-550 text-white text-sm font-semibold rounded-xl transition-colors shadow-md shadow-indigo-650/10"
+                          >
+                            Apply Now
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -495,12 +640,21 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
               <p className="text-base text-slate-300 leading-relaxed whitespace-pre-wrap">{selectedJob.description}</p>
             </div>
 
-            <button
-              onClick={() => handleApplyClick(selectedJob)}
-              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-550 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-650/10 transition-colors"
-            >
-              Apply to this Role
-            </button>
+            {isAlreadyApplied(selectedJob.id) ? (
+              <button
+                disabled
+                className="w-full py-3.5 bg-slate-800 text-slate-500 border border-slate-700 text-sm font-bold rounded-xl cursor-not-allowed"
+              >
+                Applied to this Role
+              </button>
+            ) : (
+              <button
+                onClick={() => handleApplyClick(selectedJob)}
+                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-550 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-650/10 transition-colors"
+              >
+                Apply to this Role
+              </button>
+            )}
           </div>
         )}
 
@@ -538,6 +692,40 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                           <span className="flex items-center gap-1"><FileText className="w-4 h-4" /> {app.resumeFileName}</span>
                         )}
                       </div>
+                      
+                      {/* Selection / Interview Schedule / Rejection details */}
+                      {app.status === 'Interviewing' && (
+                        <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs space-y-1 max-w-md">
+                          <p className="text-indigo-400 font-bold flex items-center gap-1">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Selected/Shortlisted for Interview
+                          </p>
+                          {app.interviewDate ? (
+                            <p className="text-slate-300">
+                              Date: <span className="font-bold text-slate-200">{app.interviewDate}</span> at <span className="font-bold text-slate-200">{app.interviewTime}</span>
+                            </p>
+                          ) : (
+                            <p className="text-slate-450 italic">Interview timing will be scheduled shortly.</p>
+                          )}
+                        </div>
+                      )}
+                      {app.status === 'Rejected' && (
+                        <div className="mt-2 p-2.5 rounded-lg bg-rose-500/5 border border-rose-500/15 text-xs max-w-md">
+                          <p className="text-rose-455 font-bold flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            Application Vetted (Not Selected)
+                          </p>
+                          <p className="text-slate-500 mt-0.5">Thank you for applying. We wish you success in your future endeavors.</p>
+                        </div>
+                      )}
+                      {app.status === 'Offered' && (
+                        <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs max-w-md">
+                          <p className="text-emerald-450 font-bold flex items-center gap-1">
+                            <Award className="w-3.5 h-3.5" />
+                            Congratulations! You have received a job offer!
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-4 justify-between sm:justify-end">

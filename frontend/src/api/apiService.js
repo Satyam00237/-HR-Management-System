@@ -335,11 +335,14 @@ export const apiService = {
     return handleResponse(res);
   },
 
-  async updateCandidateStatus(candidateId, status) {
+  async updateCandidateStatus(candidateId, status, interviewDate = '', interviewTime = '') {
+    const payload = { status };
+    if (interviewDate) payload.interviewDate = interviewDate;
+    if (interviewTime) payload.interviewTime = interviewTime;
     const res = await fetch(`${API_BASE}/candidates/${candidateId}/status`, {
       method: 'PUT',
       headers: getAuthHeaders('application/json'),
-      body: JSON.stringify({ status })
+      body: JSON.stringify(payload)
     });
     return handleResponse(res);
   }
