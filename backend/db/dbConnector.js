@@ -3,6 +3,11 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dns from 'dns';
+
+// Force DNS resolution to prefer IPv4 (fixes MongoDB Atlas connection issues on IPv6 networks)
+dns.setDefaultResultOrder('ipv4first');
+
 import {
   Employee,
   Attendance,
