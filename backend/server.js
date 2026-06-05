@@ -7,7 +7,11 @@ import { geminiService } from './services/geminiService.js';
 
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'smarthrms_jwt_secret_token_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("CRITICAL ERROR: JWT_SECRET environment variable is missing.");
+  process.exit(1);
+}
 const app = express();
 const PORT = process.env.PORT || 5000;
 

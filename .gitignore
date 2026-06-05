@@ -10,6 +10,7 @@ backend/db.json
 .env
 .env.local
 .env.*
+!**/.env.example
 backend/.env
 
 # Production build artifacts

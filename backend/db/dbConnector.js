@@ -24,7 +24,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DB_JSON_PATH = path.join(__dirname, '../db.json');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/smarthrms';
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.error("CRITICAL ERROR: MONGODB_URI environment variable is missing in process.env.");
+  process.exit(1);
+}
 
 export const db = {
   async init() {
