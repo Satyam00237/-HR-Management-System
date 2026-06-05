@@ -328,31 +328,37 @@ const defaultDb = {
 };
 
 export const localJsonDb = {
+  _cache: null,
+
   init() {
-    if (!fs.existsSync(DB_PATH) || fs.statSync(DB_PATH).size === 0) {
-      this.writeAll(defaultDb);
+    if (this._cache) return;
+
+    if (fs.existsSync(DB_PATH) && fs.statSync(DB_PATH).size > 0) {
+      try {
+        const data = fs.readFileSync(DB_PATH, 'utf8');
+        this._cache = JSON.parse(data);
+        if (!this._cache.settings) this._cache.settings = { geminiKey: '' };
+      } catch (e) {
+        console.error('Failed to read/parse db.json, using defaults', e);
+        this._cache = JSON.parse(JSON.stringify(defaultDb));
+      }
+    } else {
+      this._cache = JSON.parse(JSON.stringify(defaultDb));
+      this.writeAll(this._cache);
     }
   },
 
   readAll() {
     this.init();
-    try {
-      const data = fs.readFileSync(DB_PATH, 'utf8');
-      const parsed = JSON.parse(data);
-      // Ensure settings exists
-      if (!parsed.settings) parsed.settings = { geminiKey: '' };
-      return parsed;
-    } catch (e) {
-      console.error('Failed to read db.json, returning defaults', e);
-      return defaultDb;
-    }
+    return this._cache;
   },
 
   writeAll(data) {
+    this._cache = data;
     try {
       fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
     } catch (e) {
-      console.error('Failed to write to db.json', e);
+      console.error('Failed to write to db.json (will persist in-memory)', e);
     }
   },
 

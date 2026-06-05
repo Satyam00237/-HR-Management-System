@@ -24,7 +24,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [currentEmployee, setCurrentEmployee] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = localStorage.getItem('smart_hrms_user');
+    const user = saved ? JSON.parse(saved) : null;
+    return user?.role === 'Employee' ? 'portal' : 'overview';
+  });
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [hasKey, setHasKey] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -54,11 +58,10 @@ export default function App() {
         return;
       }
       try {
-        const list = await apiService.getEmployees();
-        const emp = list.find(e => e.email.toLowerCase() === currentUser.email.toLowerCase());
-        setCurrentEmployee(emp || currentUser);
+        const emp = await apiService.getProfile();
+        setCurrentEmployee(emp);
       } catch (e) {
-        console.error('Failed to load employee list', e);
+        console.error('Failed to load employee profile', e);
         // Fallback
         setCurrentEmployee(currentUser);
       }

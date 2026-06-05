@@ -51,6 +51,13 @@ export const apiService = {
     return handleResponse(res);
   },
 
+  async getProfile() {
+    const res = await fetch(`${API_BASE}/employees/me`, {
+      headers: getAuthHeaders(null)
+    });
+    return handleResponse(res);
+  },
+
   async createEmployee(empData) {
     const res = await fetch(`${API_BASE}/employees`, {
       method: 'POST',

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Sparkles, Shield, Cpu, Users, ArrowRight, User, Briefcase, DollarSign, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Sparkles, Shield, Cpu, ArrowRight } from 'lucide-react';
 import { apiService } from '../api/apiService';
 
 const demoUsers = [
@@ -10,17 +10,8 @@ const demoUsers = [
 ];
 
 export default function Login({ onLoginSuccess }) {
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
-  // Registration specific states
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('Employee');
-  const [department, setDepartment] = useState('Engineering');
-  const [designation, setDesignation] = useState('');
-  const [salary, setSalary] = useState('60000');
-
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -38,33 +29,6 @@ export default function Login({ onLoginSuccess }) {
       onLoginSuccess(user);
     } catch (err) {
       setError(err.message || 'Login failed. Check your credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
-    if (!name || !email || !password || !role || !department || !designation || !salary) {
-      setError('Please fill in all fields.');
-      return;
-    }
-    setError('');
-    setLoading(true);
-
-    try {
-      const user = await apiService.register({
-        name,
-        email,
-        password,
-        role,
-        department,
-        designation,
-        salary: parseFloat(salary)
-      });
-      onLoginSuccess(user);
-    } catch (err) {
-      setError(err.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
@@ -142,24 +106,8 @@ export default function Login({ onLoginSuccess }) {
         <div className="md:col-span-7 p-8 md:p-10 flex flex-col justify-center max-h-[90vh] overflow-y-auto">
           <div className="max-w-md w-full mx-auto">
             
-            {/* Toggle header between Login & SignUp */}
-            {!isSignUp ? (
-              <>
-                <h2 className="text-2xl font-bold text-slate-100 mb-1">Welcome back</h2>
-                <p className="text-xs text-slate-400 mb-6">Enter credentials or select a demo role profile below</p>
-              </>
-            ) : (
-              <>
-                <button 
-                  onClick={() => { setIsSignUp(false); setError(''); }}
-                  className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 mb-4 transition-colors"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
-                </button>
-                <h2 className="text-2xl font-bold text-slate-100 mb-1">Register Profile</h2>
-                <p className="text-xs text-slate-400 mb-6">Add a new employee node to the fullstack workforce</p>
-              </>
-            )}
+            <h2 className="text-2xl font-bold text-slate-100 mb-1">Welcome back</h2>
+            <p className="text-xs text-slate-400 mb-6">Enter credentials or select a demo role profile below</p>
 
             {/* Error Message */}
             {error && (
@@ -170,243 +118,91 @@ export default function Login({ onLoginSuccess }) {
             )}
 
             {/* Login Form */}
-            {!isSignUp ? (
-              <form onSubmit={handleLoginSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                      placeholder="name@company.com"
-                    />
-                  </div>
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    placeholder="name@company.com"
+                  />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                      placeholder="••••••••"
-                    />
-                  </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    placeholder="••••••••"
+                  />
                 </div>
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-sm py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/10 flex items-center justify-center gap-2 hover:scale-[1.01]"
-                >
-                  {loading ? (
-                    <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <span>Log In</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-
-                <div className="text-center pt-2">
-                  <span className="text-xs text-slate-500">Don't have an account? </span>
-                  <button 
-                    type="button" 
-                    onClick={() => { setIsSignUp(true); setError(''); }}
-                    className="text-xs text-indigo-400 hover:underline font-semibold"
-                  >
-                    Register here
-                  </button>
-                </div>
-              </form>
-            ) : (
-              // Sign Up Form (Compact layout)
-              <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Full Name</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-500" />
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-all"
-                        placeholder="John Doe"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Email Address</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-500" />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-all"
-                        placeholder="john.doe@company.com"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-500" />
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-all"
-                        placeholder="••••••••"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Role Access</label>
-                    <select
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition-all"
-                    >
-                      <option value="Admin">Admin</option>
-                      <option value="Senior Manager">Senior Manager</option>
-                      <option value="HR Recruiter">HR Recruiter</option>
-                      <option value="Employee">Employee</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Department</label>
-                    <select
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition-all"
-                    >
-                      <option value="Executive">Executive</option>
-                      <option value="Engineering">Engineering</option>
-                      <option value="Human Resources">Human Resources</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Operations">Operations</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Designation</label>
-                    <div className="relative">
-                      <Briefcase className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-500" />
-                      <input
-                        type="text"
-                        value={designation}
-                        onChange={(e) => setDesignation(e.target.value)}
-                        className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-all"
-                        placeholder="Frontend Engineer"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Salary (USD/Year)</label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-500" />
-                    <input
-                      type="number"
-                      value={salary}
-                      onChange={(e) => setSalary(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-all"
-                      placeholder="60000"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-xs py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/10 flex items-center justify-center gap-2 hover:scale-[1.01]"
-                >
-                  {loading ? (
-                    <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <span>Register & Sign In</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-
-                <div className="text-center pt-1.5">
-                  <span className="text-xs text-slate-500">Already registered? </span>
-                  <button 
-                    type="button" 
-                    onClick={() => { setIsSignUp(false); setError(''); }}
-                    className="text-xs text-indigo-400 hover:underline font-semibold"
-                  >
-                    Sign In here
-                  </button>
-                </div>
-              </form>
-            )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-sm py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/10 flex items-center justify-center gap-2 hover:scale-[1.01]"
+              >
+                {loading ? (
+                  <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span>Log In</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
 
             {/* Quick Demo Access Header */}
-            {!isSignUp && (
-              <>
-                <div className="relative my-8">
-                  <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                    <div className="w-full border-t border-slate-800/60"></div>
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-slate-950 px-3 text-slate-500 font-semibold tracking-wider">
-                      Demo Profiles Quick Access
-                    </span>
-                  </div>
-                </div>
+            <div className="relative my-8">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-slate-800/60"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-slate-950 px-3 text-slate-500 font-semibold tracking-wider">
+                  Demo Profiles Quick Access
+                </span>
+              </div>
+            </div>
 
-                {/* Quick Demo Access Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  {demoUsers.map((user) => (
-                    <button
-                      key={user.email}
-                      onClick={() => handleQuickLogin(user)}
-                      type="button"
-                      className="flex flex-col items-start p-3 rounded-2xl bg-slate-950/40 border border-slate-800/60 hover:border-indigo-500/40 hover:bg-slate-900/30 transition-all text-left group"
-                    >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
-                          {user.role}
-                        </span>
-                        <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${user.color}`} />
-                      </div>
-                      <div className="text-xs font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">
-                        {user.name}
-                      </div>
-                      <div className="text-[10px] text-slate-500 overflow-hidden text-ellipsis w-full whitespace-nowrap">
-                        {user.email}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+            {/* Quick Demo Access Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {demoUsers.map((user) => (
+                <button
+                  key={user.email}
+                  onClick={() => handleQuickLogin(user)}
+                  type="button"
+                  className="flex flex-col items-start p-3 rounded-2xl bg-slate-950/40 border border-slate-800/60 hover:border-indigo-500/40 hover:bg-slate-900/30 transition-all text-left group"
+                >
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                      {user.role}
+                    </span>
+                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${user.color}`} />
+                  </div>
+                  <div className="text-xs font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">
+                    {user.name}
+                  </div>
+                  <div className="text-[10px] text-slate-500 overflow-hidden text-ellipsis w-full whitespace-nowrap">
+                    {user.email}
+                  </div>
+                </button>
+              ))}
+            </div>
 
           </div>
         </div>

@@ -29,6 +29,7 @@ export default function AdminDashboard({ activeSubTab, refreshKey, onTriggerRefr
   const [empDept, setEmpDept] = useState('Engineering');
   const [empDesig, setEmpDesig] = useState('');
   const [empSalary, setEmpSalary] = useState('');
+  const [empPassword, setEmpPassword] = useState('');
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,8 +57,8 @@ export default function AdminDashboard({ activeSubTab, refreshKey, onTriggerRefr
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
-    if (!empName || !empEmail || !empDesig || !empSalary) {
-      alert('Please fill in all fields.');
+    if (!empName || !empEmail || !empDesig || !empSalary || !empPassword) {
+      alert('Please fill in all fields, including password.');
       return;
     }
 
@@ -68,7 +69,8 @@ export default function AdminDashboard({ activeSubTab, refreshKey, onTriggerRefr
         role: empRole,
         department: empDept,
         designation: empDesig,
-        salary: parseFloat(empSalary)
+        salary: parseFloat(empSalary),
+        password: empPassword
       });
       
       // Clear state
@@ -76,6 +78,7 @@ export default function AdminDashboard({ activeSubTab, refreshKey, onTriggerRefr
       setEmpEmail('');
       setEmpDesig('');
       setEmpSalary('');
+      setEmpPassword('');
       setShowAddModal(false);
       onTriggerRefresh();
       alert(`Employee ${newEmp.id} (${newEmp.name}) created successfully!`);
@@ -454,6 +457,18 @@ export default function AdminDashboard({ activeSubTab, refreshKey, onTriggerRefr
                   value={empSalary}
                   onChange={(e) => setEmpSalary(e.target.value)}
                   placeholder="95000"
+                  className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-650 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={empPassword}
+                  onChange={(e) => setEmpPassword(e.target.value)}
+                  placeholder="••••••••"
                   className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-650 focus:outline-none focus:border-indigo-500"
                 />
               </div>

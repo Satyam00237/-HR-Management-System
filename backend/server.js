@@ -55,14 +55,14 @@ const authorizeRoles = (...allowedRoles) => {
 // --- API Endpoints ---
 
 // Auth Controllers
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Missing email or password' });
     }
 
-    const employees = db.getEmployees();
+    const employees = await db.getEmployees();
     const user = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
@@ -94,15 +94,40 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
-app.post('/api/auth/register', (req, res) => {
+
+
+// 1. Employee Management
+app.get('/api/employees/me', authenticateToken, async (req, res) => {
   try {
-    const { name, email, password, department, designation, salary } = req.body;
+    const list = await db.getEmployees();
+    const user = list.find(e => e.id === req.user.id);
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ error: 'Employee profile not found' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to retrieve profile' });
+  }
+});
+
+app.get('/api/employees', authenticateToken, authorizeRoles('Admin', 'Senior Manager'), async (req, res) => {
+  try {
+    res.json(await db.getEmployees());
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch employees' });
+  }
+});
+
+app.post('/api/employees', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
+  try {
+    const { name, email, role, department, designation, salary, password } = req.body;
     
-    if (!name || !email || !password || !department || !designation || !salary) {
-      return res.status(400).json({ error: 'Missing required registration fields' });
+    if (!name || !email || !role || !department || !designation || !salary || !password) {
+      return res.status(400).json({ error: 'Missing required employee fields, including password' });
     }
 
-    const list = db.getEmployees();
+    const list = await db.getEmployees();
     
     // Check if email already exists
     const exists = list.find(e => e.email.toLowerCase() === email.toLowerCase());
@@ -110,99 +135,19 @@ app.post('/api/auth/register', (req, res) => {
       return res.status(400).json({ error: 'An employee with this email already exists' });
     }
 
-    const newId = `EMP${String(list.length + 1).padStart(3, '0')}`;
-    const newEmp = {
-      id: newId,
-      name,
-      email,
-      password,
-      role: 'Employee', // Enforce role restriction for public signups
-      department,
-      designation,
-      joinDate: new Date().toISOString().split('T')[0],
-      status: 'Active',
-      salary: parseFloat(salary),
-      leaveBalance: { casual: 12, medical: 10, earned: 18 },
-      attendanceStats: { checkInCount: 0, totalHours: 0, onTimeRate: 100 },
-      performanceScore: 85,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`
-    };
-
-    list.unshift(newEmp);
-    db.saveEmployees(list);
-
-    const token = jwt.sign(
-      { id: newEmp.id, name: newEmp.name, email: newEmp.email, role: newEmp.role },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.status(201).json({
-      id: newEmp.id,
-      name: newEmp.name,
-      email: newEmp.email,
-      role: newEmp.role,
-      avatar: newEmp.avatar,
-      token
-    });
-  } catch (e) {
-    res.status(500).json({ error: 'Registration failed' });
-  }
-});
-
-// 1. Employee Management
-app.get('/api/employees', authenticateToken, authorizeRoles('Admin', 'Senior Manager'), (req, res) => {
-  try {
-    res.json(db.getEmployees());
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to fetch employees' });
-  }
-});
-
-app.post('/api/employees', authenticateToken, authorizeRoles('Admin'), (req, res) => {
-  try {
-    const { name, email, role, department, designation, salary } = req.body;
-    
-    if (!name || !email || !role || !department || !designation || !salary) {
-      return res.status(400).json({ error: 'Missing required employee fields' });
-    }
-
-    const list = db.getEmployees();
-    const newId = `EMP${String(list.length + 1).padStart(3, '0')}`;
-    const newEmp = {
-      id: newId,
-      name,
-      email,
-      role,
-      department,
-      designation,
-      joinDate: new Date().toISOString().split('T')[0],
-      status: 'Active',
-      salary: parseFloat(salary),
-      leaveBalance: { casual: 12, medical: 10, earned: 18 },
-      attendanceStats: { checkInCount: 0, totalHours: 0, onTimeRate: 100 },
-      performanceScore: 85,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`
-    };
-
-    list.unshift(newEmp);
-    db.saveEmployees(list);
+    const newEmp = await db.addEmployee({ name, email, role, password, department, designation, salary });
     res.status(201).json(newEmp);
   } catch (e) {
     res.status(500).json({ error: 'Failed to create employee' });
   }
 });
 
-app.put('/api/employees/:id/toggle-status', authenticateToken, authorizeRoles('Admin'), (req, res) => {
+app.put('/api/employees/:id/toggle-status', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    const list = db.getEmployees();
-    const idx = list.findIndex(e => e.id === id);
-    
-    if (idx !== -1) {
-      list[idx].status = list[idx].status === 'Active' ? 'Inactive' : 'Active';
-      db.saveEmployees(list);
-      res.json(list[idx]);
+    const updated = await db.toggleEmployeeStatus(id);
+    if (updated) {
+      res.json(updated);
     } else {
       res.status(404).json({ error: 'Employee not found' });
     }
@@ -211,16 +156,21 @@ app.put('/api/employees/:id/toggle-status', authenticateToken, authorizeRoles('A
   }
 });
 
-// 2. Attendance System
-app.get('/api/attendance', authenticateToken, authorizeRoles('Admin', 'Senior Manager'), (req, res) => {
+app.get('/api/attendance', authenticateToken, async (req, res) => {
   try {
-    res.json(db.getAttendance());
+    const list = await db.getAttendance();
+    if (req.user.role === 'Employee') {
+      // Employees should only retrieve their own attendance records
+      const filtered = list.filter(a => a.employeeId === req.user.id);
+      return res.json(filtered);
+    }
+    res.json(list);
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch attendance' });
   }
 });
 
-app.post('/api/attendance/check-in', authenticateToken, (req, res) => {
+app.post('/api/attendance/check-in', authenticateToken, async (req, res) => {
   try {
     const { employeeId } = req.body;
     if (!employeeId) return res.status(400).json({ error: 'Missing employeeId' });
@@ -230,14 +180,14 @@ app.post('/api/attendance/check-in', authenticateToken, (req, res) => {
       return res.status(403).json({ error: 'Access denied. You cannot check in for another employee.' });
     }
 
-    const entry = db.checkIn(employeeId);
+    const entry = await db.checkIn(employeeId);
     res.json(entry);
   } catch (e) {
     res.status(500).json({ error: 'Check-in failed' });
   }
 });
 
-app.post('/api/attendance/check-out', authenticateToken, (req, res) => {
+app.post('/api/attendance/check-out', authenticateToken, async (req, res) => {
   try {
     const { employeeId } = req.body;
     if (!employeeId) return res.status(400).json({ error: 'Missing employeeId' });
@@ -247,7 +197,7 @@ app.post('/api/attendance/check-out', authenticateToken, (req, res) => {
       return res.status(403).json({ error: 'Access denied. You cannot check out for another employee.' });
     }
 
-    const entry = db.checkOut(employeeId);
+    const entry = await db.checkOut(employeeId);
     if (entry) {
       res.json(entry);
     } else {
@@ -259,9 +209,9 @@ app.post('/api/attendance/check-out', authenticateToken, (req, res) => {
 });
 
 // 3. Leave Requests
-app.get('/api/leaves', authenticateToken, (req, res) => {
+app.get('/api/leaves', authenticateToken, async (req, res) => {
   try {
-    const list = db.getLeaves();
+    const list = await db.getLeaves();
     if (req.user.role === 'Employee') {
       // Employees can only fetch their own leaves
       const filtered = list.filter(l => l.employeeId === req.user.id);
@@ -273,7 +223,7 @@ app.get('/api/leaves', authenticateToken, (req, res) => {
   }
 });
 
-app.post('/api/leaves', authenticateToken, (req, res) => {
+app.post('/api/leaves', authenticateToken, async (req, res) => {
   try {
     const { employeeId, leaveType, startDate, endDate, reason } = req.body;
     if (!employeeId || !leaveType || !startDate || !endDate || !reason) {
@@ -285,20 +235,20 @@ app.post('/api/leaves', authenticateToken, (req, res) => {
       return res.status(403).json({ error: 'Access denied. You cannot request leave for another employee.' });
     }
 
-    const reqEntry = db.requestLeave(employeeId, leaveType, startDate, endDate, reason);
+    const reqEntry = await db.requestLeave(employeeId, leaveType, startDate, endDate, reason);
     res.status(201).json(reqEntry);
   } catch (e) {
     res.status(500).json({ error: 'Failed to request leave' });
   }
 });
 
-app.put('/api/leaves/:id/approve', authenticateToken, authorizeRoles('Admin', 'Senior Manager'), (req, res) => {
+app.put('/api/leaves/:id/approve', authenticateToken, authorizeRoles('Admin', 'Senior Manager'), async (req, res) => {
   try {
     const { id } = req.params;
     const { approverName } = req.body;
     if (!approverName) return res.status(400).json({ error: 'Missing approverName' });
 
-    const entry = db.approveLeave(id, approverName);
+    const entry = await db.approveLeave(id, approverName);
     if (entry) {
       res.json(entry);
     } else {
@@ -309,13 +259,13 @@ app.put('/api/leaves/:id/approve', authenticateToken, authorizeRoles('Admin', 'S
   }
 });
 
-app.put('/api/leaves/:id/reject', authenticateToken, authorizeRoles('Admin', 'Senior Manager'), (req, res) => {
+app.put('/api/leaves/:id/reject', authenticateToken, authorizeRoles('Admin', 'Senior Manager'), async (req, res) => {
   try {
     const { id } = req.params;
     const { approverName } = req.body;
     if (!approverName) return res.status(400).json({ error: 'Missing approverName' });
 
-    const entry = db.rejectLeave(id, approverName);
+    const entry = await db.rejectLeave(id, approverName);
     if (entry) {
       res.json(entry);
     } else {
@@ -327,22 +277,22 @@ app.put('/api/leaves/:id/reject', authenticateToken, authorizeRoles('Admin', 'Se
 });
 
 // 4. Recruitment Management (Jobs)
-app.get('/api/jobs', (req, res) => {
+app.get('/api/jobs', async (req, res) => {
   try {
-    res.json(db.getJobs());
+    res.json(await db.getJobs());
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch jobs' });
   }
 });
 
-app.post('/api/jobs', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), (req, res) => {
+app.post('/api/jobs', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
   try {
     const { title, department, type, location, description } = req.body;
     if (!title || !department || !type || !location || !description) {
       return res.status(400).json({ error: 'Missing required job fields' });
     }
 
-    const newJob = db.createJob(title, department, type, location, description);
+    const newJob = await db.createJob(title, department, type, location, description);
     res.status(201).json(newJob);
   } catch (e) {
     res.status(500).json({ error: 'Failed to create job' });
@@ -350,40 +300,35 @@ app.post('/api/jobs', authenticateToken, authorizeRoles('Admin', 'HR Recruiter')
 });
 
 // 5. Candidates Management
-app.get('/api/candidates', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), (req, res) => {
+app.get('/api/candidates', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
   try {
-    res.json(db.getCandidates());
+    res.json(await db.getCandidates());
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch candidates' });
   }
 });
 
-app.post('/api/candidates', (req, res) => {
+app.post('/api/candidates', async (req, res) => {
   try {
     const { jobId, name, email, resumeText } = req.body;
     if (!jobId || !name || !email || !resumeText) {
       return res.status(400).json({ error: 'Missing required candidate fields' });
     }
 
-    const cand = db.addCandidate(jobId, name, email, resumeText);
+    const cand = await db.addCandidate(jobId, name, email, resumeText);
     res.status(201).json(cand);
   } catch (e) {
     res.status(500).json({ error: 'Failed to add candidate' });
   }
 });
 
-app.put('/api/candidates/:id/evaluation', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), (req, res) => {
+app.put('/api/candidates/:id/evaluation', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, matchScore, evaluation } = req.body;
-    
-    const list = db.getCandidates();
-    const idx = list.findIndex(c => c.id === id);
-    
-    if (idx !== -1) {
-      list[idx] = { ...list[idx], status, matchScore, evaluation };
-      db.saveCandidates(list);
-      res.json(list[idx]);
+    const updated = await db.updateCandidateEvaluation(id, status, matchScore, evaluation);
+    if (updated) {
+      res.json(updated);
     } else {
       res.status(404).json({ error: 'Candidate not found' });
     }
@@ -392,18 +337,13 @@ app.put('/api/candidates/:id/evaluation', authenticateToken, authorizeRoles('Adm
   }
 });
 
-app.put('/api/candidates/:id/interview-report', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), (req, res) => {
+app.put('/api/candidates/:id/interview-report', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, matchScore, interviewReport } = req.body;
-    
-    const list = db.getCandidates();
-    const idx = list.findIndex(c => c.id === id);
-    
-    if (idx !== -1) {
-      list[idx] = { ...list[idx], status, matchScore, interviewReport };
-      db.saveCandidates(list);
-      res.json(list[idx]);
+    const updated = await db.updateCandidateInterviewReport(id, status, matchScore, interviewReport);
+    if (updated) {
+      res.json(updated);
     } else {
       res.status(404).json({ error: 'Candidate not found' });
     }
@@ -413,9 +353,9 @@ app.put('/api/candidates/:id/interview-report', authenticateToken, authorizeRole
 });
 
 // Policies
-app.get('/api/policies', authenticateToken, (req, res) => {
+app.get('/api/policies', authenticateToken, async (req, res) => {
   try {
-    res.json(db.getPolicies());
+    res.json(await db.getPolicies());
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch policies' });
   }
@@ -479,19 +419,20 @@ app.post('/api/ai/chatbot', authenticateToken, async (req, res) => {
 });
 
 // Settings Endpoints
-app.get('/api/settings/has-key', (req, res) => {
+app.get('/api/settings/has-key', async (req, res) => {
   try {
-    const hasKey = !!(process.env.GEMINI_API_KEY || db.getGeminiKey());
+    const geminiKey = await db.getGeminiKey();
+    const hasKey = !!(process.env.GEMINI_API_KEY || geminiKey);
     res.json({ hasKey });
   } catch (e) {
     res.status(500).json({ error: 'Failed to retrieve settings status' });
   }
 });
 
-app.post('/api/settings/key', authenticateToken, authorizeRoles('Admin'), (req, res) => {
+app.post('/api/settings/key', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
   try {
     const { geminiKey } = req.body;
-    db.saveGeminiKey(geminiKey);
+    await db.saveGeminiKey(geminiKey);
     res.json({ success: true, message: 'Gemini API key updated on server.' });
   } catch (e) {
     res.status(500).json({ error: 'Failed to update Gemini API key' });
@@ -502,6 +443,6 @@ app.post('/api/settings/key', authenticateToken, authorizeRoles('Admin'), (req, 
 app.listen(PORT, () => {
   console.log(`===============================================`);
   console.log(`  SmartHRMS Backend API running on port ${PORT} `);
-  console.log(`  Targeting database: db.json (JSON Local DB)   `);
+  console.log(`  Targeting database: MongoDB                   `);
   console.log(`===============================================`);
 });
