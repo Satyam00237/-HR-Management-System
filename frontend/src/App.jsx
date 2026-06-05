@@ -55,7 +55,7 @@ export default function App() {
   // Load employee profile matching the logged-in user
   useEffect(() => {
     const loadEmployee = async () => {
-      if (!currentUser) {
+      if (!currentUser || currentUser.role === 'Candidate') {
         setCurrentEmployee(null);
         return;
       }

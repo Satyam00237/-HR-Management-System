@@ -16,6 +16,18 @@ const getGeminiClient = () => {
   }
 };
 
+// Robust model wrapper that falls back to gemini-pro if gemini-1.5-flash is unsupported or fails
+const generateWithModelFallback = async (genAI, prompt) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    return await model.generateContent(prompt);
+  } catch (err) {
+    console.warn('Failed with gemini-1.5-flash, trying gemini-pro fallback:', err.message);
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    return await model.generateContent(prompt);
+  }
+};
+
 // Clean JSON response from Gemini (strips markdown wrapper if present)
 const cleanJSONResponse = (text) => {
   let cleaned = text.trim();
@@ -32,98 +44,198 @@ const cleanJSONResponse = (text) => {
 
 export const geminiService = {
   /**
-   * AI Resume Screening
+   * AI Resume Screening based on strict JD criteria weights
    */
-  async screenResume(jobDescription, resumeText) {
+  async screenResume(jobDescription, resumeText, skills = '') {
     const genAI = getGeminiClient();
     
     if (!genAI) {
       console.log('Gemini API Key missing on backend. Running in simulated fallback mode.');
       await new Promise(resolve => setTimeout(resolve, 2000));
-      return this.mockScreenResume(jobDescription, resumeText);
+      return this.mockScreenResume(jobDescription, resumeText, skills);
     }
 
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      
       const prompt = `
-        You are an expert HR Talent Acquisition Specialist. Evaluate the following Candidate Resume against the Job Description.
-        
-        Job Description:
-        ${jobDescription}
-        
-        Candidate Resume:
-        ${resumeText}
-        
-        Analyze the skills, education, and experience. Generates a match score (0-100%), 3 key strengths, 2 weaknesses/gaps, and a final recommendation ("Recommended" | "Not Recommended" | "Borderline").
-        
+        You are an AI Recruitment Assistant.
+        Your task is to compare a candidate's resume against the uploaded Job Description and calculate how well the candidate matches the role.
+
+        Rules:
+        * Do NOT calculate the score using semantic similarity.
+        * Calculate the score strictly based on:
+          1. Required skills match.
+          2. Experience requirements match.
+          3. Education requirements match.
+        * Ignore generic words such as: Project, Product, Team, Development, System, Application, Technology, Software.
+        * Only count explicit technical skills.
+        * Do NOT consider project names, project titles, or application names as proof of professional skills (e.g., building an HR Management System does NOT mean they have HR Operations experience; building a Payroll App does NOT mean they have Payroll expertise; building a Recruitment Platform does NOT mean they have Talent Acquisition experience).
+        * Only consider explicit skills, work experience, certifications, education, and responsibilities mentioned in the resume.
+        * If more than 70% of required skills are missing, the final matchPercentage must not exceed 30% (cap it at 30%).
+        * Return the exact matched skills and missing skills used for scoring in "matchedSkills" and "missingSkills" arrays.
+        * Do not give random or arbitrary scores. Base the score strictly on the Job Description.
+
+        Scoring Weights:
+        * Skills Match = 50% (Proportion of required explicit technical skills matched)
+        * Experience Match = 25% (Align candidate's years/depth of experience with Job Description requirements)
+        * Education Match = 10% (Align candidate's degree with Job Description requirements)
+        * Projects & Achievements = 15% (Align candidate's achievements/projects with Job Description responsibilities)
+
         Provide the output strictly in JSON format matching this schema:
         {
-          "matchScore": number,
+          "matchPercentage": number, // Sum of: Skills Match (0-50) + Experience Match (0-25) + Education Match (0-10) + Projects Match (0-15). Cap strictly at 30 if >70% of required skills are missing.
+          "matchedSkills": [string], // Exact explicit technical skills found in both JD and resume (excluding generic words)
+          "missingSkills": [string], // Exact explicit technical skills found in JD but missing in resume (excluding generic words)
+          "experienceMatch": string, // Explanation of experience comparison
+          "educationMatch": string, // Explanation of education comparison
           "strengths": [string],
           "weaknesses": [string],
-          "recommendation": "Recommended" | "Not Recommended" | "Borderline"
+          "summary": string, // Provide the exact mathematical breakdown (e.g., Skills Match: X/50, Experience Match: Y/25, Education Match: Z/10, Projects Match: W/15) followed by a short summary
+          "recommendation": "Strong Match" | "Moderate Match" | "Weak Match" // "Strong Match" if matchPercentage >= 80, "Moderate Match" if 60-79, "Weak Match" if < 60
         }
         Respond ONLY with the JSON. Do not include markdown code block syntax. Just raw JSON.
+
+        JOB DESCRIPTION:
+        ${jobDescription}
+
+        CANDIDATE SKILLS:
+        ${skills || "Not explicitly listed"}
+
+        CANDIDATE RESUME:
+        ${resumeText}
       `;
 
-      const result = await model.generateContent(prompt);
+      const result = await generateWithModelFallback(genAI, prompt);
       const response = await result.response;
-      return cleanJSONResponse(response.text());
+      const parsed = cleanJSONResponse(response.text());
+      parsed.matchScore = parsed.matchPercentage; // map for frontend backwards compatibility
+      return parsed;
     } catch (e) {
       console.warn('Backend Gemini API resume screening error, falling back to mock screen:', e);
-      return this.mockScreenResume(jobDescription, resumeText);
+      return this.mockScreenResume(jobDescription, resumeText, skills);
     }
   },
 
-  mockScreenResume(jobDesc, resumeText) {
-    const text = (resumeText || '').toLowerCase();
-    const desc = (jobDesc || '').toLowerCase();
+  mockScreenResume(jobDesc, resumeText, skills = '') {
+    const cleanText = (text) => (text || '').toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, ' ');
+
+    const descLower = cleanText(jobDesc);
+    const resumeLower = cleanText(resumeText);
+
+    const skillKeywords = [
+      'react', 'node', 'javascript', 'typescript', 'tailwind', 'python', 'sql', 'aws', 'docker', 'kubernetes',
+      'java', 'golang', 'rust', 'vue', 'angular', 'html', 'css', 'mongodb', 'postgresql', 'mysql', 'git',
+      'ci/cd', 'jenkins', 'github', 'jira', 'agile', 'scrum', 'sales', 'marketing', 'seo', 'sem', 'hr',
+      'recruitment', 'payroll', 'onboarding', 'finance', 'accounting', 'excel', 'management', 'leadership',
+      'communication', 'collaboration', 'design', 'figma'
+    ];
+
+    const ignoreWords = ['project', 'product', 'team', 'development', 'system', 'application', 'technology', 'software'];
+    const filteredSkillKeywords = skillKeywords.filter(k => !ignoreWords.includes(k));
+
+    // Identify required skills from Job Description
+    const requiredSkills = filteredSkillKeywords.filter(skill => descLower.includes(skill));
+
+    // Only use explicitly provided candidate skills from the `skills` parameter (exclude ignore words)
+    const candSkills = (skills || '')
+      .toLowerCase()
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !ignoreWords.includes(s));
+
+    // Match candidate skills against required skills
+    const matchedSkills = requiredSkills.filter(skill => candSkills.includes(skill));
+    const missingSkills = requiredSkills.filter(skill => !candSkills.includes(skill));
     
-    let matchScore = 50;
+    // 1. Skills Match (50% max)
+    let skillsScore = 0;
+    if (requiredSkills.length > 0) {
+      skillsScore = (matchedSkills.length / requiredSkills.length) * 50;
+    }
+
+    // 2. Experience Match (25% max) - baseline experienceScore = 0
+    let experienceScore = 0;
+    let experienceMatch = "No matching experience requirements identified.";
+    const hasSrRole = resumeLower.includes('senior') || resumeLower.includes('lead') || resumeLower.includes('manager');
+    const requiresSrRole = descLower.includes('senior') || descLower.includes('lead') || descLower.includes('manager');
+    
+    if (hasSrRole && requiresSrRole) {
+      experienceScore = 25;
+      experienceMatch = "Strong Match. Experience level aligns with the senior/leadership requirements.";
+    } else if (!requiresSrRole && resumeLower.includes('developer')) {
+      experienceScore = 15;
+      experienceMatch = "Moderate Match. Experience aligns with professional developer benchmarks.";
+    }
+
+    // 3. Education Match (10% max) - baseline educationScore = 0
+    let educationScore = 0;
+    let educationMatch = "No matching education credentials identified.";
+    const degreeKeywords = ['btech', 'mtech', 'bca', 'mca', 'bachelor', 'master', 'degree', 'phd', 'graduate'];
+    const jdDegrees = degreeKeywords.filter(d => descLower.includes(d));
+    const resumeDegrees = degreeKeywords.filter(d => resumeLower.includes(d));
+    
+    if (jdDegrees.length > 0) {
+      const matchedDegrees = jdDegrees.filter(d => resumeDegrees.includes(d));
+      if (matchedDegrees.length > 0) {
+        educationScore = 10;
+        educationMatch = "Strong Match. Academic credentials align with job requirements.";
+      }
+    }
+
+    // 4. Projects & Achievements (15% max) - baseline projectsScore = 0
+    let projectsScore = 0;
+    // Check for explicit achievements/responsibilities keywords (avoiding project name inferences)
+    if (resumeLower.includes('achieved') || resumeLower.includes('responsible') || resumeLower.includes('led') || resumeLower.includes('implemented')) {
+      projectsScore = 15;
+    }
+
+    // Sum matching components
+    let matchPercentage = Math.round(skillsScore + experienceScore + educationScore + projectsScore);
+
+    // Apply strict check: If more than 70% of required skills are missing, matchPercentage must not exceed 20%
+    if (requiredSkills.length > 0) {
+      const missingRatio = missingSkills.length / requiredSkills.length;
+      if (missingRatio > 0.70) {
+        matchPercentage = Math.min(matchPercentage, 20);
+      }
+    }
+
+    const matchScore = matchPercentage; // compatibility
+
     const strengths = [];
-    const weaknesses = [];
-
-    const keywords = ['react', 'node', 'javascript', 'typescript', 'tailwind', 'python', 'sql', 'aws', 'docker', 'lead', 'management', 'ai', 'css', 'html'];
-    const matched = keywords.filter(k => text.includes(k));
-
-    if (matched.length > 0) {
-      matchScore += Math.min(45, matched.length * 7);
-    }
-
-    if (text.includes('senior') || text.includes('lead') || text.includes('years') && parseInt(text.match(/\d+/) || [0]) > 4) {
-      matchScore = Math.min(98, matchScore + 10);
-      strengths.push('Demonstrates solid career growth and experience in technical roles.');
-    }
-
-    matched.slice(0, 3).forEach(kw => {
-      strengths.push(`Proven skills in ${kw.toUpperCase()} matching core requirements.`);
+    matchedSkills.slice(0, 3).forEach(skill => {
+      strengths.push(`Possesses required technical skill: ${skill.toUpperCase()}`);
     });
-
+    if (experienceScore >= 20) {
+      strengths.push("Experience matches job requirements.");
+    }
     if (strengths.length === 0) {
-      strengths.push('Clean resume format and clear presentation of experience.');
+      strengths.push("Meets base professional benchmarks.");
     }
 
-    const jobKeywords = keywords.filter(k => desc.includes(k));
-    const missing = jobKeywords.filter(k => !text.includes(k));
-
-    missing.slice(0, 2).forEach(m => {
-      weaknesses.push(`Lack of explicit mention of ${m.toUpperCase()} in the resume.`);
+    const weaknesses = [];
+    missingSkills.slice(0, 2).forEach(skill => {
+      weaknesses.push(`Missing required skill: ${skill.toUpperCase()}`);
     });
-
-    if (weaknesses.length === 0) {
-      weaknesses.push('Could provide more metric-driven accomplishments.');
-      weaknesses.push('Limited public portfolio references.');
+    if (weaknesses.length === 0 && requiredSkills.length > 0) {
+      weaknesses.push("No major skill gaps identified.");
     }
 
-    let recommendation = 'Borderline';
-    if (matchScore >= 80) recommendation = 'Recommended';
-    else if (matchScore < 60) recommendation = 'Not Recommended';
+    let recommendation = 'Moderate Match';
+    if (matchPercentage >= 80) recommendation = 'Strong Match';
+    else if (matchPercentage < 60) recommendation = 'Weak Match';
+
+    const summary = `ATS Evaluation: Profile match score is evaluated at ${matchPercentage}%. Skills Match: ${Math.round(skillsScore)}/50%, Experience Match: ${experienceScore}/25%, Education Match: ${educationScore}/10%, Projects Match: ${projectsScore}/15%.`;
 
     return {
-      matchScore,
+      matchPercentage,
+      matchScore, // compatibility
+      matchedSkills,
+      missingSkills,
+      experienceMatch,
+      educationMatch,
       strengths,
       weaknesses,
+      summary,
       recommendation
     };
   },
@@ -140,7 +252,6 @@ export const geminiService = {
     }
 
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const formattedHistory = history.map(h => `${h.role === 'assistant' ? 'Interviewer' : 'Candidate'}: ${h.content}`).join('\n');
       
       const prompt = `
@@ -157,7 +268,7 @@ export const geminiService = {
         Keep your question highly focused, friendly, and under 30 words so it sounds natural when spoken. Do not write any pleasantries except a brief transition.
       `;
 
-      const result = await model.generateContent(prompt);
+      const result = await generateWithModelFallback(genAI, prompt);
       const response = await result.response;
       return response.text().trim();
     } catch (e) {
@@ -204,7 +315,6 @@ export const geminiService = {
     }
 
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const formattedHistory = history.map(h => `${h.role === 'assistant' ? 'Interviewer' : 'Candidate'}: ${h.content}`).join('\n');
       
       const prompt = `
@@ -234,7 +344,7 @@ export const geminiService = {
         Respond ONLY with the JSON. Do not include markdown code block syntax. Just raw JSON.
       `;
 
-      const result = await model.generateContent(prompt);
+      const result = await generateWithModelFallback(genAI, prompt);
       const response = await result.response;
       return cleanJSONResponse(response.text());
     } catch (e) {
@@ -292,8 +402,6 @@ export const geminiService = {
     }
 
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      
       const prompt = `
         You are a friendly, helpful HR assistant chatbot named "SmartHR Assistant" at our company.
         The currently logged-in employee has this profile context:
@@ -304,7 +412,7 @@ export const geminiService = {
         Be precise, professional, and friendly. Limit your response to 3 sentences maximum. Use the employee context data (like remaining leaves, salary, check-in history) to make your response highly personalized. If they ask about policies not in context, refer them to the official policy documents or their manager.
       `;
 
-      const result = await model.generateContent(prompt);
+      const result = await generateWithModelFallback(genAI, prompt);
       const response = await result.response;
       return response.text().trim();
     } catch (e) {

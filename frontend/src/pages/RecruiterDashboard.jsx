@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Search, Briefcase, FileText, CheckCircle, Clock, 
-  Play, Volume2, Mic, MicOff, RefreshCw, Star, Sparkles, Send, Award, MessageSquare, AlertCircle
+  Play, Volume2, Mic, MicOff, RefreshCw, Star, Sparkles, Send, Award, MessageSquare, AlertCircle, Upload
 } from 'lucide-react';
 import { apiService } from '../api/apiService';
 
@@ -22,12 +22,22 @@ export default function RecruiterDashboard({ activeSubTab, refreshKey, onTrigger
   const [screenJobId, setScreenJobId] = useState('');
   const [screenName, setScreenName] = useState('');
   const [screenEmail, setScreenEmail] = useState('');
+  const [screenSkills, setScreenSkills] = useState('');
   const [screenResumeText, setScreenResumeText] = useState('');
+  const [screenMethod, setScreenMethod] = useState('paste'); // 'paste' or 'upload'
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [isScreening, setIsScreening] = useState(false);
   const [screenResult, setScreenResult] = useState(null);
 
+  // Job Description Source States
+  const [jdSourceType, setJdSourceType] = useState('select'); // 'select' or 'custom'
+  const [customJdText, setCustomJdText] = useState('');
+  const [jdMethod, setJdMethod] = useState('paste'); // 'paste' or 'upload'
+  const [uploadingJdFile, setUploadingJdFile] = useState(false);
+
   // Candidate Vetting States
   const [selectedVettingCand, setSelectedVettingCand] = useState(null);
+  const [selectedScheduleCand, setSelectedScheduleCand] = useState(null);
   const [isVettingScreening, setIsVettingScreening] = useState(false);
   const [schDate, setSchDate] = useState('');
   const [schTime, setSchTime] = useState('');
@@ -39,12 +49,15 @@ export default function RecruiterDashboard({ activeSubTab, refreshKey, onTrigger
       setSchDate(selectedVettingCand.interviewDate || '');
       setSchTime(selectedVettingCand.interviewTime || '');
       setIsShortlisting(selectedVettingCand.status === 'Interviewing');
+    } else if (selectedScheduleCand) {
+      setSchDate(selectedScheduleCand.interviewDate || '');
+      setSchTime(selectedScheduleCand.interviewTime || '');
     } else {
       setSchDate('');
       setSchTime('');
       setIsShortlisting(false);
     }
-  }, [selectedVettingCand]);
+  }, [selectedVettingCand, selectedScheduleCand]);
 
   // Voice Interview States
   const [interviewJobId, setInterviewJobId] = useState('');
@@ -158,21 +171,65 @@ HR Generalist | FinTech Solutions (2023 - Present)
     }
   };
 
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      alert('Only PDF files are supported.');
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const res = await apiService.parseResumePDF(file);
+      setScreenResumeText(res.text);
+      alert('Resume PDF uploaded and parsed successfully!');
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Failed to parse resume PDF.');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleJdUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      alert('Only PDF files are supported.');
+      return;
+    }
+
+    setUploadingJdFile(true);
+    try {
+      const res = await apiService.parseResumePDF(file);
+      setCustomJdText(res.text);
+      alert('Job Description PDF uploaded and parsed successfully!');
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Failed to parse Job Description PDF.');
+    } finally {
+      setUploadingJdFile(false);
+    }
+  };
+
   // AI Resume Screening Action
   const handleScreenResume = async () => {
-    if (!screenName || !screenEmail || !screenResumeText.trim()) {
-      alert('Please enter Candidate Name, Email, and Paste Resume Text.');
+    if (!customJdText.trim()) {
+      alert('Please enter or upload Job Description details.');
+      return;
+    }
+
+    if (!screenResumeText.trim()) {
+      alert('Please enter or upload Candidate Resume details.');
       return;
     }
 
     setIsScreening(true);
     setScreenResult(null);
 
-    const selectedJob = jobs.find(j => j.id === screenJobId);
-    const jobDescription = selectedJob ? `${selectedJob.title} - ${selectedJob.description}` : 'General Role';
-
     try {
-      const result = await apiService.screenResume(jobDescription, screenResumeText);
+      const result = await apiService.screenResume(customJdText.trim(), screenResumeText.trim(), '');
       setScreenResult(result);
     } catch (e) {
       console.error(e);
@@ -191,17 +248,20 @@ HR Generalist | FinTech Solutions (2023 - Present)
         jobId: screenJobId,
         name: screenName,
         email: screenEmail,
+        skills: screenSkills,
         resumeText: screenResumeText
       });
       
       // Update candidate evaluation report details
-      const status = screenResult.recommendation === 'Recommended' ? 'Interviewing' : 'Screening';
+      const status = (screenResult.recommendation === 'Strong Match' || screenResult.recommendation === 'Recommended') ? 'Interviewing' : 'Screening';
       await apiService.saveCandidateEvaluation(newCand.id, status, screenResult.matchScore, screenResult);
 
       // Reset screening forms
       setScreenName('');
       setScreenEmail('');
+      setScreenSkills('');
       setScreenResumeText('');
+      setCustomJdText('');
       setScreenResult(null);
       onTriggerRefresh();
       alert('Candidate successfully screened and added to the recruitment pipeline!');
@@ -448,13 +508,22 @@ HR Generalist | FinTech Solutions (2023 - Present)
                           <span className="text-slate-500 italic text-[11px]">No Interview Conducted</span>
                         )}
                       </td>
-                      <td className="py-3.5 text-right font-medium">
+                      <td className="py-3.5 text-right font-medium flex items-center justify-end gap-2">
                         <button
                           onClick={() => setSelectedVettingCand(c)}
-                          className="px-2.5 py-1 bg-indigo-655/15 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/20 hover:border-indigo-550 rounded-lg text-[10px] font-bold transition-all"
+                          className="px-2.5 py-1 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/20 hover:border-indigo-500 rounded-lg text-[10px] font-bold transition-all"
                         >
                           Review & Vet
                         </button>
+                        {c.status === 'Interviewing' && (
+                          <button
+                            onClick={() => setSelectedScheduleCand(c)}
+                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-600 text-amber-400 hover:text-white border border-amber-500/20 hover:border-amber-500 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            Interview Timing
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -598,68 +667,185 @@ HR Generalist | FinTech Solutions (2023 - Present)
               </div>
               
               <div className="space-y-4">
+                {/* 1. Job Description block */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Select Job Role</label>
-                  <select
-                    value={screenJobId}
-                    onChange={(e) => setScreenJobId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
-                  >
-                    {jobs.map(j => (
-                      <option key={j.id} value={j.id}>{j.title}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Candidate Name</label>
-                    <input
-                      type="text"
-                      value={screenName}
-                      onChange={(e) => setScreenName(e.target.value)}
-                      placeholder="Ananya Rao"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-colors"
-                    />
+                  <label className="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">1. Job Description (JD)</label>
+                  <div className="flex gap-2 mb-3 bg-slate-950 p-1 border border-slate-800 rounded-xl w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setJdMethod('paste')}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                        jdMethod === 'paste' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-205'
+                      }`}
+                    >
+                      Paste JD Text
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setJdMethod('upload')}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                        jdMethod === 'upload' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-205'
+                      }`}
+                    >
+                      Upload JD PDF
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Candidate Email</label>
-                    <input
-                      type="email"
-                      value={screenEmail}
-                      onChange={(e) => setScreenEmail(e.target.value)}
-                      placeholder="ananya@example.com"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-colors"
-                    />
-                  </div>
-                </div>
 
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="block text-xs font-semibold text-slate-400">Paste Candidate Resume</label>
-                    {/* Hackathon quick-load helpers */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => loadSampleResume('react')}
-                        className="text-[9px] bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 px-2 py-0.5 border border-indigo-500/20 rounded font-semibold transition-all"
-                      >
-                        Sample React
-                      </button>
-                      <button
-                        onClick={() => loadSampleResume('hr')}
-                        className="text-[9px] bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 px-2 py-0.5 border border-violet-500/20 rounded font-semibold transition-all"
-                      >
-                        Sample HR
-                      </button>
+                  {jdMethod === 'paste' ? (
+                    <textarea
+                      rows={5}
+                      value={customJdText}
+                      onChange={(e) => setCustomJdText(e.target.value)}
+                      placeholder="Paste Job Description / Requirements here..."
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-[11px] text-slate-100 font-mono placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-colors"
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="border border-dashed border-slate-850 rounded-2xl p-5 bg-slate-950/20 flex flex-col items-center justify-center text-center space-y-2 hover:border-indigo-500/40 transition-colors relative">
+                        <Upload className="w-8 h-8 text-indigo-400 animate-pulse" />
+                        <div>
+                          <p className="text-xs font-bold text-slate-300">Select Job Description PDF</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">PDF format only. Max 5MB.</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          onChange={handleJdUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          disabled={uploadingJdFile}
+                        />
+                      </div>
+
+                      {uploadingJdFile && (
+                        <div className="flex items-center gap-2 text-xs text-indigo-400 font-semibold bg-indigo-500/5 p-3 border border-indigo-500/10 rounded-xl">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                          Parsing Job Description text from PDF file...
+                        </div>
+                      )}
+
+                      {customJdText && !uploadingJdFile && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                              <CheckCircle className="w-3.5 h-3.5" /> Job Description text parsed successfully
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setCustomJdText('')}
+                              className="text-[9px] text-rose-455 font-bold hover:underline"
+                            >
+                              Clear Text
+                            </button>
+                          </div>
+                          <div className="bg-slate-950/50 p-2.5 border border-slate-850 rounded-xl max-h-[120px] overflow-y-auto">
+                            <pre className="text-[9px] text-slate-400 font-mono leading-relaxed whitespace-pre-wrap">{customJdText}</pre>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">2. Candidate Resume</label>
+                  
+                  {/* Method Toggle Buttons */}
+                  <div className="flex gap-2 mb-3 bg-slate-950 p-1 border border-slate-800 rounded-xl w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setScreenMethod('paste')}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                        screenMethod === 'paste' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-205'
+                      }`}
+                    >
+                      Paste Text
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScreenMethod('upload')}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                        screenMethod === 'upload' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-205'
+                      }`}
+                    >
+                      Upload PDF File
+                    </button>
                   </div>
-                  <textarea
-                    rows={8}
-                    value={screenResumeText}
-                    onChange={(e) => setScreenResumeText(e.target.value)}
-                    placeholder="Copy-paste the resume text content here for OCR simulation extraction..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-[11px] text-slate-100 font-mono placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
+
+                  {screenMethod === 'paste' ? (
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[10px] text-slate-500 font-semibold">Enter candidate resume text details</span>
+                        {/* Hackathon quick-load helpers */}
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => loadSampleResume('react')}
+                            className="text-[9px] bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 px-2 py-0.5 border border-indigo-500/20 rounded font-semibold transition-all"
+                          >
+                            Sample React
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => loadSampleResume('hr')}
+                            className="text-[9px] bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 px-2 py-0.5 border border-violet-500/20 rounded font-semibold transition-all"
+                          >
+                            Sample HR
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        rows={8}
+                        value={screenResumeText}
+                        onChange={(e) => setScreenResumeText(e.target.value)}
+                        placeholder="Copy-paste the resume text content here for OCR simulation extraction..."
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-[11px] text-slate-100 font-mono placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-colors"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="border border-dashed border-slate-800 rounded-2xl p-6 bg-slate-950/20 flex flex-col items-center justify-center text-center space-y-3 hover:border-indigo-500/40 transition-colors relative">
+                        <Upload className="w-8 h-8 text-indigo-400 animate-pulse" />
+                        <div>
+                          <p className="text-xs font-bold text-slate-300">Select candidate resume PDF</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">PDF format only. Maximum size: 5MB.</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          onChange={handleResumeUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          disabled={uploadingFile}
+                        />
+                      </div>
+                      
+                      {uploadingFile && (
+                        <div className="flex items-center gap-2 text-xs text-indigo-400 font-semibold bg-indigo-500/5 p-3 border border-indigo-500/10 rounded-xl">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                          Parsing resume text from PDF file...
+                        </div>
+                      )}
+
+                      {screenResumeText && !uploadingFile && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                              <CheckCircle className="w-3.5 h-3.5" /> Resume text parsed successfully
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setScreenResumeText('')}
+                              className="text-[9px] text-rose-455 font-bold hover:underline"
+                            >
+                              Clear Text
+                            </button>
+                          </div>
+                          <div className="bg-slate-950/50 p-3.5 border border-slate-850 rounded-2xl max-h-[140px] overflow-y-auto">
+                            <pre className="text-[9px] text-slate-400 font-mono leading-relaxed whitespace-pre-wrap">{screenResumeText}</pre>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -707,14 +893,14 @@ HR Generalist | FinTech Solutions (2023 - Present)
                       <p className="text-[10px] text-slate-500">Evaluated Candidate: {screenName}</p>
                     </div>
                     <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                      screenResult.recommendation === 'Recommended' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
-                      screenResult.recommendation === 'Borderline' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
+                      (screenResult.recommendation === 'Strong Match' || screenResult.recommendation === 'Recommended') ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
+                      (screenResult.recommendation === 'Moderate Match' || screenResult.recommendation === 'Borderline') ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
                       'bg-rose-500/15 text-rose-400 border-rose-500/20'
                     }`}>
                       {screenResult.recommendation.toUpperCase()}
                     </span>
                   </div>
-
+ 
                   {/* Match Gauge */}
                   <div className="flex items-center gap-4 py-4">
                     <div className="relative w-20 h-20 flex items-center justify-center shrink-0 bg-slate-950/60 rounded-full border border-slate-800">
@@ -733,7 +919,7 @@ HR Generalist | FinTech Solutions (2023 - Present)
                     </div>
                     <div>
                       <h5 className="text-xs font-bold text-slate-300">AI Profile Match Score</h5>
-                      <p className="text-[10px] text-slate-400 mt-1">{screenResult.recommendation === 'Recommended' ? 'Exceeds standard qualifications. Move candidate to interviews.' : 'Gaps in skills require validation in manual vetting.'}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{(screenResult.recommendation === 'Strong Match' || screenResult.recommendation === 'Recommended') ? 'Exceeds standard qualifications. Move candidate to interviews.' : 'Gaps in skills require validation in manual vetting.'}</p>
                     </div>
                   </div>
 
@@ -765,15 +951,9 @@ HR Generalist | FinTech Solutions (2023 - Present)
                 <div className="pt-4 border-t border-slate-800 flex gap-3">
                   <button
                     onClick={() => setScreenResult(null)}
-                    className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
+                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
                   >
-                    Reset
-                  </button>
-                  <button
-                    onClick={handleSaveScreenedCandidate}
-                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl border border-indigo-500 shadow-md shadow-indigo-600/10 transition-all hover:scale-[1.01]"
-                  >
-                    Add to Pipeline & Shortlist
+                    Clear Results & Screen Next
                   </button>
                 </div>
               </div>
@@ -781,7 +961,7 @@ HR Generalist | FinTech Solutions (2023 - Present)
               <div className="flex-1 flex flex-col items-center justify-center text-center py-10 text-slate-500">
                 <FileText className="w-10 h-10 text-slate-750 mb-3" />
                 <h5 className="text-xs font-semibold text-slate-400">Screening Panel Idle</h5>
-                <p className="text-[10px] text-slate-500 max-w-[280px] mt-1">Select a job, insert candidate profile and resume text, then trigger the AI core.</p>
+                <p className="text-[10px] text-slate-500 max-w-[280px] mt-1">Provide job description and candidate resume (by pasting text or uploading PDF files), then trigger the AI screening check.</p>
               </div>
             )}
           </div>
@@ -1098,8 +1278,8 @@ HR Generalist | FinTech Solutions (2023 - Present)
                       <div>
                         <h5 className="text-xs font-bold text-slate-300">Profile Match Score</h5>
                         <span className={`inline-block text-[9px] font-bold px-2 py-0.5 mt-1 rounded border ${
-                          selectedVettingCand.evaluation?.recommendation === 'Recommended' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                          selectedVettingCand.evaluation?.recommendation === 'Borderline' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                          (selectedVettingCand.evaluation?.recommendation === 'Strong Match' || selectedVettingCand.evaluation?.recommendation === 'Recommended') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          (selectedVettingCand.evaluation?.recommendation === 'Moderate Match' || selectedVettingCand.evaluation?.recommendation === 'Borderline') ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                           'bg-rose-500/10 text-rose-400 border-rose-500/20'
                         }`}>
                           {(selectedVettingCand.evaluation?.recommendation || 'Borderline').toUpperCase()}
@@ -1304,6 +1484,78 @@ HR Generalist | FinTech Solutions (2023 - Present)
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Quick Schedule Interview Modal */}
+      {selectedScheduleCand && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-6 shadow-2xl relative">
+            {/* Header */}
+            <div className="flex justify-between items-start border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-200">Schedule Interview</h3>
+                <p className="text-[10px] text-indigo-400 font-semibold">{selectedScheduleCand.name} — {selectedScheduleCand.jobTitle}</p>
+              </div>
+              <button
+                onClick={() => setSelectedScheduleCand(null)}
+                className="text-xs text-slate-500 hover:text-slate-300 font-bold transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+
+            {/* Inputs */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Interview Date</label>
+                <input
+                  type="date"
+                  value={schDate}
+                  onChange={(e) => setSchDate(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Interview Time</label>
+                <input
+                  type="time"
+                  value={schTime}
+                  onChange={(e) => setSchTime(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-4 border-t border-slate-800 flex gap-3">
+              <button
+                onClick={() => setSelectedScheduleCand(null)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!schDate || !schTime) {
+                    alert('Please select both Interview Date and Time.');
+                    return;
+                  }
+                  try {
+                    await apiService.updateCandidateStatus(selectedScheduleCand.id, 'Interviewing', schDate, schTime);
+                    setSelectedScheduleCand(null);
+                    onTriggerRefresh();
+                    alert('Interview scheduled successfully!');
+                  } catch (e) {
+                    alert('Failed to schedule interview.');
+                  }
+                }}
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-550 text-white text-xs font-semibold rounded-xl border border-indigo-500 shadow-md shadow-indigo-600/10 transition-all hover:scale-[1.01]"
+              >
+                Save Schedule
+              </button>
             </div>
           </div>
         </div>

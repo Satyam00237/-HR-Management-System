@@ -265,11 +265,11 @@ app.post('/api/candidates/:id/screen', authenticateToken, authorizeRoles('Admin'
     const job = await JobModel.findOne({ id: candidate.jobId });
     const jobDescStr = job ? `${job.title} - ${job.description}` : 'General Role';
 
-    const result = await geminiService.screenResume(jobDescStr, candidate.resumeText);
+    const result = await geminiService.screenResume(jobDescStr, candidate.resumeText, candidate.skills);
     
     candidate.matchScore = result.matchScore;
     candidate.evaluation = result;
-    candidate.status = result.recommendation === 'Recommended' ? 'Interviewing' : 'Screening';
+    candidate.status = (result.recommendation === 'Strong Match' || result.recommendation === 'Recommended') ? 'Interviewing' : 'Screening';
     await candidate.save();
 
     res.json({
@@ -280,6 +280,28 @@ app.post('/api/candidates/:id/screen', authenticateToken, authorizeRoles('Admin'
   } catch (e) {
     console.error('Error screening existing candidate:', e);
     res.status(500).json({ error: 'Failed to run AI screening.' });
+  }
+});
+
+app.post('/api/candidates/parse-resume', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), upload.single('resume'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No PDF file uploaded.' });
+    }
+
+    const parser = new PDFParse({ data: req.file.buffer });
+    const parsedPdf = await parser.getText();
+    const textContent = parsedPdf.text || '';
+    await parser.destroy();
+
+    if (!textContent.trim()) {
+      return res.status(400).json({ error: 'Could not extract text content from the PDF file.' });
+    }
+
+    res.json({ text: textContent });
+  } catch (e) {
+    console.error('PDF parsing error:', e);
+    res.status(500).json({ error: 'Failed to parse PDF resume.' });
   }
 });
 
@@ -564,12 +586,12 @@ app.get('/api/candidates', authenticateToken, authorizeRoles('Admin', 'HR Recrui
 
 app.post('/api/candidates', async (req, res) => {
   try {
-    const { jobId, name, email, resumeText } = req.body;
+    const { jobId, name, email, skills, resumeText } = req.body;
     if (!jobId || !name || !email || !resumeText) {
       return res.status(400).json({ error: 'Missing required candidate fields' });
     }
 
-    const cand = await db.addCandidate(jobId, name, email, resumeText);
+    const cand = await db.addCandidate(jobId, name, email, resumeText, skills || '');
     res.status(201).json(cand);
   } catch (e) {
     res.status(500).json({ error: 'Failed to add candidate' });
@@ -618,12 +640,12 @@ app.get('/api/policies', authenticateToken, async (req, res) => {
 // --- AI Service SECURE Proxies ---
 app.post('/api/ai/screen', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
   try {
-    const { jobDescription, resumeText } = req.body;
+    const { jobDescription, resumeText, skills } = req.body;
     if (!jobDescription || !resumeText) {
       return res.status(400).json({ error: 'Missing jobDescription or resumeText' });
     }
 
-    const result = await geminiService.screenResume(jobDescription, resumeText);
+    const result = await geminiService.screenResume(jobDescription, resumeText, skills || '');
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: 'AI Resume screening failed' });

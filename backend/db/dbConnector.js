@@ -330,7 +330,7 @@ export const db = {
     return await Candidate.find().sort({ createdAt: -1 }).lean();
   },
 
-  async addCandidate(jobId, name, email, resumeText) {
+  async addCandidate(jobId, name, email, resumeText, skills = '') {
     const job = await Job.findOne({ id: jobId });
     
     const newCandidate = new Candidate({
@@ -340,6 +340,7 @@ export const db = {
       name,
       email,
       resumeText,
+      skills,
       matchScore: 0,
       status: 'Applied',
       evaluation: null,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Briefcase, FileText, CheckCircle, Clock, 
   User, Lock, Mail, Upload, Sparkles, LogOut, 
@@ -52,6 +52,21 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
   const [applications, setApplications] = useState([]);
   const [appsLoading, setAppsLoading] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    }
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
 
   // Load Active Jobs
   useEffect(() => {
@@ -77,6 +92,12 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
         setShowApplyModal(true);
         setPendingJobApply(null);
       }
+
+      // Keep applications list synchronized periodically to get timing updates
+      const interval = setInterval(() => {
+        loadApplications();
+      }, 10000);
+      return () => clearInterval(interval);
     }
   }, [currentUser]);
 
@@ -313,9 +334,14 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
               </div>
 
               {/* Notification Bell Dropdown Container */}
-              <div className="relative">
+              <div className="relative" ref={notificationRef}>
                 <button
-                  onClick={() => setShowNotifications(!showNotifications)}
+                  onClick={() => {
+                    setShowNotifications(!showNotifications);
+                    if (!showNotifications) {
+                      loadApplications();
+                    }
+                  }}
                   className={`p-2 rounded-xl border transition-all relative ${
                     showNotifications 
                       ? 'bg-indigo-650 border-indigo-550 text-white shadow-md' 
@@ -421,60 +447,8 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
       <div className="max-w-6xl mx-auto px-6 py-8">
         
         {/* ==================================================== */}
-        {/* JOB BOARD / BROWSE SCREEN                            */}
-        {/* ==================================================== */}
         {activeTab === 'jobs' && !selectedJob && (
           <div className="space-y-12">
-            
-            {/* Global Notifications Section */}
-            {currentUser && applications.some(app => ['Interviewing', 'Rejected', 'Offered'].includes(app.status)) && (
-              <div className="space-y-3 animate-fadeIn">
-                {applications
-                  .filter(app => ['Interviewing', 'Rejected', 'Offered'].includes(app.status))
-                  .map(app => (
-                    <div 
-                      key={app.id} 
-                      className={`p-4 border rounded-2xl flex items-center justify-between gap-4 shadow-lg transition-all ${
-                        app.status === 'Offered' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' :
-                        app.status === 'Interviewing' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300' :
-                        'bg-rose-500/5 border-rose-500/15 text-rose-350'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        {app.status === 'Offered' && <Award className="w-5 h-5 shrink-0 text-emerald-400" />}
-                        {app.status === 'Interviewing' && <Clock className="w-5 h-5 shrink-0 text-indigo-400" />}
-                        {app.status === 'Rejected' && <AlertCircle className="w-5 h-5 shrink-0 text-rose-450" />}
-                        <div className="text-xs sm:text-sm">
-                          {app.status === 'Offered' && (
-                            <p>🎉 Congratulations! You have received a job offer for <strong className="text-slate-100">{app.jobTitle}</strong>.</p>
-                          )}
-                          {app.status === 'Interviewing' && (
-                            <div>
-                              <p>✨ You have been shortlisted for <strong className="text-slate-100 font-bold">{app.jobTitle}</strong>!</p>
-                              {app.interviewDate ? (
-                                <p className="mt-0.5 text-xs text-slate-400">
-                                  Scheduled Interview: <span className="text-slate-200 font-bold">{app.interviewDate}</span> at <span className="text-slate-200 font-bold">{app.interviewTime}</span>
-                                </p>
-                              ) : (
-                                <p className="mt-0.5 text-xs text-slate-450 italic">Interview schedule is pending.</p>
-                              )}
-                            </div>
-                          )}
-                          {app.status === 'Rejected' && (
-                            <p>Thank you for applying for the <strong className="text-slate-200 font-semibold">{app.jobTitle}</strong> role. Unfortunately, your application was not selected for further rounds at this time.</p>
-                          )}
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => { setActiveTab('applications'); setSelectedJob(null); }} 
-                        className="text-xs font-bold underline shrink-0 hover:text-white transition-colors"
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            )}
             
             {/* HERO SECTION */}
             <div className="text-center py-16 relative max-w-4xl mx-auto space-y-6">

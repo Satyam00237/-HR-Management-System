@@ -197,11 +197,11 @@ export const apiService = {
   },
 
   // --- AI secure proxies ---
-  async screenResume(jobDescription, resumeText) {
+  async screenResume(jobDescription, resumeText, skills = '') {
     const res = await fetch(`${API_BASE}/ai/screen`, {
       method: 'POST',
       headers: getAuthHeaders('application/json'),
-      body: JSON.stringify({ jobDescription, resumeText })
+      body: JSON.stringify({ jobDescription, resumeText, skills })
     });
     return handleResponse(res);
   },
@@ -298,6 +298,19 @@ export const apiService = {
 
     const headers = getAuthHeaders(null);
     const res = await fetch(`${API_BASE}/candidate/profile/resume`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+    return handleResponse(res);
+  },
+
+  async parseResumePDF(file) {
+    const formData = new FormData();
+    formData.append('resume', file);
+
+    const headers = getAuthHeaders(null);
+    const res = await fetch(`${API_BASE}/candidates/parse-resume`, {
       method: 'POST',
       headers,
       body: formData
