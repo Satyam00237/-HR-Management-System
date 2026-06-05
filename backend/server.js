@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import { db } from './db/dbConnector.js';
 import jwt from 'jsonwebtoken';
 import { geminiService } from './services/geminiService.js';
+import multer from 'multer';
+import { PDFParse } from 'pdf-parse';
 
 dotenv.config();
 
@@ -13,6 +15,7 @@ if (!JWT_SECRET) {
   process.exit(1);
 }
 const app = express();
+const upload = multer({ storage: multer.memoryStorage() });
 const PORT = process.env.PORT || 5000;
 
 // Enable CORS for frontend Vite development server
@@ -57,6 +60,253 @@ const authorizeRoles = (...allowedRoles) => {
 };
 
 // --- API Endpoints ---
+
+// --- Candidate Portal Auth & Profile Endpoints ---
+app.post('/api/candidate/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Missing name, email, or password' });
+    }
+
+    const existing = await db.getJobSeeker(email);
+    if (existing) {
+      return res.status(400).json({ error: 'A candidate with this email already exists.' });
+    }
+
+    const newSeeker = await db.addJobSeeker({ name, email, password });
+    
+    const token = jwt.sign(
+      { email: newSeeker.email, name: newSeeker.name, role: 'Candidate' },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(201).json({
+      name: newSeeker.name,
+      email: newSeeker.email,
+      role: 'Candidate',
+      token
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Registration failed.' });
+  }
+});
+
+app.post('/api/candidate/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Missing email or password' });
+    }
+
+    const seeker = await db.getJobSeeker(email);
+    if (!seeker || seeker.password !== password) {
+      return res.status(401).json({ error: 'Invalid candidate credentials.' });
+    }
+
+    const token = jwt.sign(
+      { email: seeker.email, name: seeker.name, role: 'Candidate' },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      name: seeker.name,
+      email: seeker.email,
+      role: 'Candidate',
+      token
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Login failed.' });
+  }
+});
+
+app.get('/api/candidate/profile', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'Candidate') {
+      return res.status(403).json({ error: 'Access denied. Candidates only.' });
+    }
+    const seeker = await db.getJobSeeker(req.user.email);
+    if (!seeker) {
+      return res.status(404).json({ error: 'Profile not found.' });
+    }
+    res.json(seeker);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to retrieve profile.' });
+  }
+});
+
+app.put('/api/candidate/profile', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'Candidate') {
+      return res.status(403).json({ error: 'Access denied. Candidates only.' });
+    }
+    const { name, skills, education, experience } = req.body;
+    const updated = await db.updateJobSeekerProfile(req.user.email, {
+      name,
+      skills,
+      education,
+      experience
+    });
+    res.json(updated);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update profile.' });
+  }
+});
+
+app.get('/api/candidate/applications', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'Candidate') {
+      return res.status(403).json({ error: 'Access denied. Candidates only.' });
+    }
+    const list = await db.getCandidates();
+    const filtered = list.filter(c => c.email.toLowerCase() === req.user.email.toLowerCase());
+    res.json(filtered);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to retrieve applications.' });
+  }
+});
+
+app.post('/api/candidate/profile/resume', authenticateToken, upload.single('resume'), async (req, res) => {
+  try {
+    if (req.user.role !== 'Candidate') {
+      return res.status(403).json({ error: 'Access denied. Candidates only.' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No PDF file uploaded.' });
+    }
+
+    const parser = new PDFParse({ data: req.file.buffer });
+    const parsedPdf = await parser.getText();
+    const textContent = parsedPdf.text || '';
+    await parser.destroy();
+
+    if (!textContent.trim()) {
+      return res.status(400).json({ error: 'Could not extract text content from the PDF file.' });
+    }
+
+    const updated = await db.updateJobSeekerProfile(req.user.email, {
+      resumeText: textContent,
+      resumeFileName: req.file.originalname
+    });
+
+    res.json({
+      success: true,
+      message: 'Resume PDF uploaded and parsed successfully.',
+      resumeFileName: req.file.originalname,
+      profile: updated
+    });
+  } catch (e) {
+    console.error('PDF parsing error:', e);
+    res.status(500).json({ error: 'Failed to parse and save PDF resume.' });
+  }
+});
+
+app.post('/api/candidate/apply', authenticateToken, upload.single('resume'), async (req, res) => {
+  try {
+    if (req.user.role !== 'Candidate') {
+      return res.status(403).json({ error: 'Access denied. Candidates only.' });
+    }
+    const { jobId, name, skills, education, experience } = req.body;
+    if (!jobId) {
+      return res.status(400).json({ error: 'Missing jobId' });
+    }
+
+    const seeker = await db.getJobSeeker(req.user.email);
+    if (!seeker) {
+      return res.status(404).json({ error: 'Candidate profile not found.' });
+    }
+
+    let resumeText = seeker.resumeText;
+    let resumeFileName = seeker.resumeFileName;
+
+    if (req.file) {
+      const parser = new PDFParse({ data: req.file.buffer });
+      const parsedPdf = await parser.getText();
+      resumeText = parsedPdf.text || '';
+      resumeFileName = req.file.originalname;
+      await parser.destroy();
+    }
+
+    if (!resumeText) {
+      return res.status(400).json({ error: 'Please upload a PDF resume first or during application.' });
+    }
+
+    const appDetails = {
+      name: name || seeker.name || req.user.name,
+      resumeText,
+      resumeFileName,
+      skills: skills !== undefined ? skills : seeker.skills,
+      education: education !== undefined ? education : seeker.education,
+      experience: experience !== undefined ? experience : seeker.experience
+    };
+
+    const application = await db.applyForJob(jobId, req.user.email, appDetails);
+    res.status(201).json(application);
+  } catch (e) {
+    console.error('Job application error:', e);
+    res.status(500).json({ error: e.message || 'Failed to submit job application.' });
+  }
+});
+
+// --- Recruiter AI Screening & Vetting Endpoints ---
+app.post('/api/candidates/:id/screen', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const list = await db.getCandidates();
+    const candidateObj = list.find(c => c.id === id);
+    if (!candidateObj) {
+      return res.status(404).json({ error: 'Candidate not found.' });
+    }
+
+    const { Candidate: CandidateModel, Job: JobModel } = await import('./db/models.js');
+    const candidate = await CandidateModel.findOne({ id });
+    const job = await JobModel.findOne({ id: candidate.jobId });
+    const jobDescStr = job ? `${job.title} - ${job.description}` : 'General Role';
+
+    const result = await geminiService.screenResume(jobDescStr, candidate.resumeText);
+    
+    candidate.matchScore = result.matchScore;
+    candidate.evaluation = result;
+    candidate.status = result.recommendation === 'Recommended' ? 'Interviewing' : 'Screening';
+    await candidate.save();
+
+    res.json({
+      success: true,
+      candidate: candidate.toObject(),
+      result
+    });
+  } catch (e) {
+    console.error('Error screening existing candidate:', e);
+    res.status(500).json({ error: 'Failed to run AI screening.' });
+  }
+});
+
+app.put('/api/candidates/:id/status', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, interviewDate, interviewTime } = req.body;
+    if (!['Applied', 'Screening', 'Interviewing', 'Rejected', 'Offered'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid candidate status.' });
+    }
+
+    const { Candidate: CandidateModel } = await import('./db/models.js');
+    const candidate = await CandidateModel.findOne({ id });
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found.' });
+    }
+
+    candidate.status = status;
+    if (interviewDate !== undefined) candidate.interviewDate = interviewDate;
+    if (interviewTime !== undefined) candidate.interviewTime = interviewTime;
+    await candidate.save();
+
+    res.json(candidate.toObject());
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update candidate status.' });
+  }
+});
 
 // Auth Controllers
 app.post('/api/auth/login', async (req, res) => {

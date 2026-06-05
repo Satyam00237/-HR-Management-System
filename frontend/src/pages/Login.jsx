@@ -9,7 +9,7 @@ const demoUsers = [
   { name: 'Amit Patel', email: 'amit@company.com', role: 'Employee', avatar: 'Amit', color: 'from-emerald-500 to-teal-600' }
 ];
 
-export default function Login({ onLoginSuccess }) {
+export default function Login({ onLoginSuccess, onShowCareers }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -202,6 +202,18 @@ export default function Login({ onLoginSuccess }) {
                   </div>
                 </button>
               ))}
+            </div>
+
+            {/* Careers Portal link */}
+            <div className="mt-6 text-center border-t border-slate-800/40 pt-4">
+              <span className="text-xs text-slate-500">Looking for jobs? </span>
+              <button
+                onClick={onShowCareers}
+                type="button"
+                className="text-xs text-indigo-400 hover:text-indigo-350 font-bold transition-colors underline"
+              >
+                Explore our Careers Portal
+              </button>
             </div>
 
           </div>

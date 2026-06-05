@@ -14,6 +14,7 @@ import {
   Leave,
   Job,
   Candidate,
+  JobSeeker,
   Policy,
   Setting
 } from './models.js';
@@ -383,6 +384,70 @@ export const db = {
   // Policies
   async getPolicies() {
     return await Policy.find().lean();
+  },
+
+  // JobSeekers (Candidate Accounts)
+  async getJobSeeker(email) {
+    return await JobSeeker.findOne({ email: email.toLowerCase() }).lean();
+  },
+
+  async addJobSeeker({ name, email, password }) {
+    const seeker = new JobSeeker({
+      name,
+      email: email.toLowerCase(),
+      password
+    });
+    return await seeker.save();
+  },
+
+  async updateJobSeekerProfile(email, profileData) {
+    const seeker = await JobSeeker.findOne({ email: email.toLowerCase() });
+    if (seeker) {
+      if (profileData.name) seeker.name = profileData.name;
+      if (profileData.skills !== undefined) seeker.skills = profileData.skills;
+      if (profileData.education !== undefined) seeker.education = profileData.education;
+      if (profileData.experience !== undefined) seeker.experience = profileData.experience;
+      if (profileData.resumeText !== undefined) seeker.resumeText = profileData.resumeText;
+      if (profileData.resumeFileName !== undefined) seeker.resumeFileName = profileData.resumeFileName;
+      await seeker.save();
+      return seeker.toObject();
+    }
+    return null;
+  },
+
+  async applyForJob(jobId, email, applicationDetails) {
+    const job = await Job.findOne({ id: jobId });
+    
+    // Check if already applied
+    const existingApplication = await Candidate.findOne({ jobId, email: email.toLowerCase() });
+    if (existingApplication) {
+      throw new Error("You have already applied for this job position.");
+    }
+
+    const newApplication = new Candidate({
+      id: `CAN${Date.now()}`,
+      jobId,
+      jobTitle: job ? job.title : 'Unknown Position',
+      name: applicationDetails.name,
+      email: email.toLowerCase(),
+      resumeText: applicationDetails.resumeText,
+      resumeFileName: applicationDetails.resumeFileName || '',
+      skills: applicationDetails.skills || '',
+      education: applicationDetails.education || '',
+      experience: applicationDetails.experience || '',
+      matchScore: 0,
+      status: 'Applied'
+    });
+
+    await newApplication.save();
+
+    // Update job application count
+    if (job) {
+      job.candidatesCount += 1;
+      await job.save();
+    }
+
+    return newApplication.toObject();
   }
 };
 

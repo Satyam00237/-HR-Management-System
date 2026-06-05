@@ -26,6 +26,10 @@ export default function RecruiterDashboard({ activeSubTab, refreshKey, onTrigger
   const [isScreening, setIsScreening] = useState(false);
   const [screenResult, setScreenResult] = useState(null);
 
+  // Candidate Vetting States
+  const [selectedVettingCand, setSelectedVettingCand] = useState(null);
+  const [isVettingScreening, setIsVettingScreening] = useState(false);
+
   // Voice Interview States
   const [interviewJobId, setInterviewJobId] = useState('');
   const [interviewName, setInterviewName] = useState('');
@@ -383,7 +387,8 @@ HR Generalist | FinTech Solutions (2023 - Present)
                     <th className="pb-3 pr-2">Applied Position</th>
                     <th className="pb-3 pr-2">AI Match Score</th>
                     <th className="pb-3 pr-2">Stage</th>
-                    <th className="pb-3 text-right">Interview Evaluation</th>
+                    <th className="pb-3 pr-2 text-right">Interview Evaluation</th>
+                    <th className="pb-3 text-right">Vetting</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -426,6 +431,14 @@ HR Generalist | FinTech Solutions (2023 - Present)
                         ) : (
                           <span className="text-slate-500 italic text-[11px]">No Interview Conducted</span>
                         )}
+                      </td>
+                      <td className="py-3.5 text-right font-medium">
+                        <button
+                          onClick={() => setSelectedVettingCand(c)}
+                          className="px-2.5 py-1 bg-indigo-655/15 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/20 hover:border-indigo-550 rounded-lg text-[10px] font-bold transition-all"
+                        >
+                          Review & Vet
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -996,6 +1009,183 @@ HR Generalist | FinTech Solutions (2023 - Present)
                 <p className="text-[10px] text-slate-500 max-w-[280px] mt-1">Configure candidate details on the left panel, and initialize to open a microphone speech session.</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 5. Candidate Review & Vetting Modal */}
+      {selectedVettingCand && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto space-y-6 shadow-2xl relative">
+            
+            {/* Header */}
+            <div className="flex justify-between items-start border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-200">Review Candidate Application</h3>
+                <p className="text-[10px] text-indigo-400 font-semibold">{selectedVettingCand.name} — {selectedVettingCand.email}</p>
+              </div>
+              <button
+                onClick={() => setSelectedVettingCand(null)}
+                className="text-xs text-slate-500 hover:text-slate-350 font-bold transition-colors"
+              >
+                Close Panel
+              </button>
+            </div>
+
+            {/* Content Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Left Column: Candidate Info and Resume */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Profile Information</h4>
+                  <div className="bg-slate-950/50 p-4 border border-slate-850 rounded-2xl space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-semibold">Job Title:</span>
+                      <span className="text-slate-300 font-bold">{selectedVettingCand.jobTitle}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-semibold">Education:</span>
+                      <span className="text-slate-300 font-bold">{selectedVettingCand.education || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-semibold">Experience:</span>
+                      <span className="text-slate-300 font-bold">{selectedVettingCand.experience || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-semibold">Skills:</span>
+                      <span className="text-slate-300 font-bold">{selectedVettingCand.skills || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Extracted PDF Resume Text {selectedVettingCand.resumeFileName && `(${selectedVettingCand.resumeFileName})`}
+                  </h4>
+                  <div className="bg-slate-950/50 p-3.5 border border-slate-850 rounded-2xl max-h-[200px] overflow-y-auto">
+                    <pre className="text-[10px] text-slate-400 font-mono leading-relaxed whitespace-pre-wrap">{selectedVettingCand.resumeText}</pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: AI Analysis */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">AI Resume Vetting Analysis</h4>
+                
+                {selectedVettingCand.matchScore > 0 ? (
+                  <div className="bg-slate-950/40 p-5 border border-slate-850 rounded-2xl space-y-4">
+                    <div className="flex items-center gap-4 border-b border-slate-850/60 pb-3">
+                      <div className="relative w-16 h-16 flex items-center justify-center shrink-0 bg-slate-900 rounded-full border border-slate-800">
+                        <span className="text-xs font-extrabold text-slate-200">{selectedVettingCand.matchScore}%</span>
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-bold text-slate-300">Profile Match Score</h5>
+                        <span className={`inline-block text-[9px] font-bold px-2 py-0.5 mt-1 rounded border ${
+                          selectedVettingCand.evaluation?.recommendation === 'Recommended' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          selectedVettingCand.evaluation?.recommendation === 'Borderline' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                          'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}>
+                          {(selectedVettingCand.evaluation?.recommendation || 'Borderline').toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-[9px] font-bold text-emerald-450 uppercase tracking-wider block mb-1">Key Strengths</span>
+                        <ul className="space-y-1 text-[11px] text-slate-350 list-disc list-inside">
+                          {(selectedVettingCand.evaluation?.strengths || []).map((str, idx) => (
+                            <li key={idx}>{str}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <span className="text-[9px] font-bold text-amber-450 uppercase tracking-wider block mb-1">Areas to Investigate</span>
+                        <ul className="space-y-1 text-[11px] text-slate-350 list-disc list-inside">
+                          {(selectedVettingCand.evaluation?.weaknesses || []).map((wk, idx) => (
+                            <li key={idx}>{wk}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-950/40 p-6 border border-slate-850 rounded-2xl text-center py-10 space-y-4">
+                    <Sparkles className="w-8 h-8 text-slate-750 mx-auto animate-pulse" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-400">AI Screening Not Run Yet</p>
+                      <p className="text-[9px] text-slate-650 mt-0.5">This candidate applied from the careers portal. Run AI screening check to compute the profile matching metrics.</p>
+                    </div>
+                    
+                    <button
+                      onClick={async () => {
+                        setIsVettingScreening(true);
+                        try {
+                          const res = await apiService.screenExistingCandidate(selectedVettingCand.id);
+                          setSelectedVettingCand(res.candidate);
+                          onTriggerRefresh(); // Reload main pipeline candidate list
+                          alert('AI Screening completed successfully!');
+                        } catch (err) {
+                          console.error(err);
+                          alert('AI Resume screening failed.');
+                        } finally {
+                          setIsVettingScreening(false);
+                        }
+                      }}
+                      disabled={isVettingScreening}
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 transition-colors"
+                    >
+                      {isVettingScreening ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                          Running Gemini Screening Analysis...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 animate-pulse text-white" />
+                          Execute AI Resume Analysis
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions Footer */}
+            <div className="pt-4 border-t border-slate-800 flex justify-between gap-3">
+              <button
+                onClick={async () => {
+                  try {
+                    await apiService.updateCandidateStatus(selectedVettingCand.id, 'Rejected');
+                    setSelectedVettingCand(null);
+                    onTriggerRefresh();
+                    alert('Candidate status updated: Rejected');
+                  } catch (e) {
+                    alert('Failed to reject candidate.');
+                  }
+                }}
+                className="flex-1 py-2.5 bg-rose-500/10 hover:bg-rose-500/15 text-rose-400 text-xs font-bold rounded-xl border border-rose-500/20 hover:border-rose-500/35 transition-all"
+              >
+                Reject Candidate
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await apiService.updateCandidateStatus(selectedVettingCand.id, 'Interviewing');
+                    setSelectedVettingCand(null);
+                    onTriggerRefresh();
+                    alert('Candidate status updated: Shortlisted for Interviews');
+                  } catch (e) {
+                    alert('Failed to shortlist candidate.');
+                  }
+                }}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl border border-emerald-500 shadow-md shadow-emerald-600/15 transition-all hover:scale-[1.01]"
+              >
+                Shortlist Candidate (Move to Interviews)
+              </button>
+            </div>
           </div>
         </div>
       )}

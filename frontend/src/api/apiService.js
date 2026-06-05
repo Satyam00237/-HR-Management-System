@@ -247,5 +247,100 @@ export const apiService = {
       body: JSON.stringify({ geminiKey })
     });
     return handleResponse(res);
+  },
+
+  // Candidate Authentication
+  async candidateRegister(name, email, password) {
+    const res = await fetch(`${API_BASE}/candidate/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    return handleResponse(res);
+  },
+
+  async candidateLogin(email, password) {
+    const res = await fetch(`${API_BASE}/candidate/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    return handleResponse(res);
+  },
+
+  // Candidate Profile
+  async getCandidateProfile() {
+    const res = await fetch(`${API_BASE}/candidate/profile`, {
+      headers: getAuthHeaders(null)
+    });
+    return handleResponse(res);
+  },
+
+  async getCandidateApplications() {
+    const res = await fetch(`${API_BASE}/candidate/applications`, {
+      headers: getAuthHeaders(null)
+    });
+    return handleResponse(res);
+  },
+
+  async updateCandidateProfile(profileData) {
+    const res = await fetch(`${API_BASE}/candidate/profile`, {
+      method: 'PUT',
+      headers: getAuthHeaders('application/json'),
+      body: JSON.stringify(profileData)
+    });
+    return handleResponse(res);
+  },
+
+  async uploadCandidateResume(file) {
+    const formData = new FormData();
+    formData.append('resume', file);
+
+    const headers = getAuthHeaders(null);
+    const res = await fetch(`${API_BASE}/candidate/profile/resume`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+    return handleResponse(res);
+  },
+
+  // Job Application (multipart/FormData)
+  async candidateApply(jobId, applicationData, resumeFile) {
+    const headers = getAuthHeaders(null);
+    const formData = new FormData();
+    formData.append('jobId', jobId);
+    formData.append('name', applicationData.name || '');
+    formData.append('skills', applicationData.skills || '');
+    formData.append('education', applicationData.education || '');
+    formData.append('experience', applicationData.experience || '');
+    if (resumeFile) {
+      formData.append('resume', resumeFile);
+    }
+
+    const res = await fetch(`${API_BASE}/candidate/apply`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+    return handleResponse(res);
+  },
+
+  // Recruiter Screening on Applied Candidates
+  async screenExistingCandidate(candidateId) {
+    const res = await fetch(`${API_BASE}/candidates/${candidateId}/screen`, {
+      method: 'POST',
+      headers: getAuthHeaders('application/json')
+    });
+    return handleResponse(res);
+  },
+
+  async updateCandidateStatus(candidateId, status) {
+    const res = await fetch(`${API_BASE}/candidates/${candidateId}/status`, {
+      method: 'PUT',
+      headers: getAuthHeaders('application/json'),
+      body: JSON.stringify({ status })
+    });
+    return handleResponse(res);
   }
 };

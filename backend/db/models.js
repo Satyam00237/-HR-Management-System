@@ -71,8 +71,14 @@ const candidateSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true },
   resumeText: { type: String, required: true },
+  resumeFileName: { type: String, default: '' },
+  skills: { type: String, default: '' },
+  education: { type: String, default: '' },
+  experience: { type: String, default: '' },
   matchScore: { type: Number, default: 0 },
   status: { type: String, default: 'Applied' }, // 'Applied', 'Screening', 'Interviewing', etc.
+  interviewDate: { type: String, default: '' },
+  interviewTime: { type: String, default: '' },
   evaluation: {
     score: Number,
     strengths: [String],
@@ -87,6 +93,18 @@ const candidateSchema = new mongoose.Schema({
     feedback: String,
     reportText: String
   }
+}, { timestamps: true });
+
+// JobSeeker (Candidate Account) Schema
+const jobSeekerSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  name: { type: String, required: true },
+  skills: { type: String, default: '' },
+  education: { type: String, default: '' },
+  experience: { type: String, default: '' },
+  resumeText: { type: String, default: '' },
+  resumeFileName: { type: String, default: '' }
 }, { timestamps: true });
 
 // Policy Schema
@@ -106,5 +124,6 @@ export const Attendance = mongoose.model('Attendance', attendanceSchema);
 export const Leave = mongoose.model('Leave', leaveSchema);
 export const Job = mongoose.model('Job', jobSchema);
 export const Candidate = mongoose.model('Candidate', candidateSchema);
+export const JobSeeker = mongoose.model('JobSeeker', jobSeekerSchema);
 export const Policy = mongoose.model('Policy', policySchema);
 export const Setting = mongoose.model('Setting', settingSchema);

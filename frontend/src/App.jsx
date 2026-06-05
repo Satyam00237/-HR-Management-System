@@ -8,6 +8,7 @@ import ManagerDashboard from './pages/ManagerDashboard';
 import RecruiterDashboard from './pages/RecruiterDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import Login from './pages/Login';
+import CareersPortal from './pages/CareersPortal';
 import AccessDenied from './components/AccessDenied';
 import { apiService } from './api/apiService';
 
@@ -32,6 +33,7 @@ export default function App() {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [hasKey, setHasKey] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showCareers, setShowCareers] = useState(false);
 
   const currentRole = currentUser?.role || 'Guest';
   const allowedTabs = allowedTabsByRole[currentRole] || [];
@@ -90,7 +92,14 @@ export default function App() {
   };
 
   if (!currentUser) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
+    if (showCareers) {
+      return <CareersPortal onClose={() => setShowCareers(false)} onLoginSuccess={handleLoginSuccess} />;
+    }
+    return <Login onLoginSuccess={handleLoginSuccess} onShowCareers={() => setShowCareers(true)} />;
+  }
+
+  if (currentUser.role === 'Candidate') {
+    return <CareersPortal currentUser={currentUser} onLogout={handleLogout} />;
   }
 
   return (
