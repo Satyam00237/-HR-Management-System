@@ -946,6 +946,43 @@ HR Generalist | FinTech Solutions (2023 - Present)
                       </ul>
                     </div>
                   </div>
+
+                  {/* Matched & Missing Skills badges */}
+                  <div className="border-t border-slate-800/80 pt-4 mt-2 space-y-3">
+                    <div>
+                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1.5">
+                        Matched Skills ({screenResult.matchedSkills?.length || 0})
+                      </span>
+                      {screenResult.matchedSkills && screenResult.matchedSkills.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {screenResult.matchedSkills.map((sk, idx) => (
+                            <span key={idx} className="text-[9px] px-2 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded font-semibold uppercase">
+                              {sk}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-500 italic">No direct matches identified</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-rose-455 uppercase tracking-wider block mb-1.5">
+                        Missing Required Skills ({screenResult.missingSkills?.length || 0})
+                      </span>
+                      {screenResult.missingSkills && screenResult.missingSkills.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {screenResult.missingSkills.map((sk, idx) => (
+                            <span key={idx} className="text-[9px] px-2 py-0.5 bg-rose-500/10 text-rose-350 border border-rose-500/20 rounded font-semibold uppercase">
+                              {sk}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-500 italic">None missing</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-800 flex gap-3">
@@ -1289,7 +1326,7 @@ HR Generalist | FinTech Solutions (2023 - Present)
 
                     <div className="space-y-3">
                       <div>
-                        <span className="text-[9px] font-bold text-emerald-450 uppercase tracking-wider block mb-1">Key Strengths</span>
+                        <span className="text-[9px] font-bold text-emerald-455 uppercase tracking-wider block mb-1">Key Strengths</span>
                         <ul className="space-y-1 text-[11px] text-slate-350 list-disc list-inside">
                           {(selectedVettingCand.evaluation?.strengths || []).map((str, idx) => (
                             <li key={idx}>{str}</li>
@@ -1297,12 +1334,49 @@ HR Generalist | FinTech Solutions (2023 - Present)
                         </ul>
                       </div>
                       <div>
-                        <span className="text-[9px] font-bold text-amber-450 uppercase tracking-wider block mb-1">Areas to Investigate</span>
+                        <span className="text-[9px] font-bold text-amber-455 uppercase tracking-wider block mb-1">Areas to Investigate</span>
                         <ul className="space-y-1 text-[11px] text-slate-350 list-disc list-inside">
                           {(selectedVettingCand.evaluation?.weaknesses || []).map((wk, idx) => (
                             <li key={idx}>{wk}</li>
                           ))}
                         </ul>
+                      </div>
+
+                      {/* Matched & Missing Skills in vetting modal */}
+                      <div className="border-t border-slate-800/80 pt-3 mt-1 space-y-2">
+                        <div>
+                          <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+                            Matched Skills ({selectedVettingCand.evaluation?.matchedSkills?.length || 0})
+                          </span>
+                          {selectedVettingCand.evaluation?.matchedSkills && selectedVettingCand.evaluation?.matchedSkills.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {selectedVettingCand.evaluation.matchedSkills.map((sk, idx) => (
+                                <span key={idx} className="text-[8px] px-1.5 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded font-semibold uppercase">
+                                  {sk}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[8px] text-slate-500 italic">No direct matches identified</span>
+                          )}
+                        </div>
+
+                        <div>
+                          <span className="text-[9px] font-bold text-rose-455 uppercase tracking-wider block mb-1">
+                            Missing Skills ({selectedVettingCand.evaluation?.missingSkills?.length || 0})
+                          </span>
+                          {selectedVettingCand.evaluation?.missingSkills && selectedVettingCand.evaluation?.missingSkills.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {selectedVettingCand.evaluation.missingSkills.map((sk, idx) => (
+                                <span key={idx} className="text-[8px] px-1.5 py-0.5 bg-rose-500/10 text-rose-350 border border-rose-500/20 rounded font-semibold uppercase">
+                                  {sk}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[8px] text-slate-500 italic">None missing</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

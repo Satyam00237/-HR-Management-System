@@ -42,6 +42,174 @@ const cleanJSONResponse = (text) => {
   return JSON.parse(cleaned.trim());
 };
 
+// Canonicalize skill aliases to ensure exact matches
+const canonicalizeSkill = (skill) => {
+  const s = (skill || '').toLowerCase().trim();
+  if (['react', 'react.js', 'reactjs'].includes(s)) return 'react';
+  if (['node', 'node.js', 'nodejs'].includes(s)) return 'node';
+  if (['js', 'javascript', 'es6'].includes(s)) return 'javascript';
+  if (['mongo', 'mongodb'].includes(s)) return 'mongodb';
+  if (['ts', 'typescript'].includes(s)) return 'typescript';
+  if (['py', 'python'].includes(s)) return 'python';
+  if (['express', 'expressjs', 'express.js'].includes(s)) return 'express';
+  if (['redux', 'redux-toolkit'].includes(s)) return 'redux';
+  if (['jwt', 'json web token'].includes(s)) return 'jwt';
+  if (['html', 'html5'].includes(s)) return 'html';
+  if (['css', 'css3'].includes(s)) return 'css';
+  return s;
+};
+
+// Domain-sensitive skills that should never be inferred from project names
+const DOMAIN_SENSITIVE_SKILLS = [
+  'hr', 'human resources', 'recruitment', 'recruiting', 'payroll', 'onboarding',
+  'talent acquisition', 'sourcing', 'employee engagement', 'performance scorecards',
+  'hr policies', 'devops', 'figma', 'design', 'ui', 'ux', 'ui/ux'
+];
+
+// Helper to determine if a matched skill in the resume is just part of a project name
+const isProjectInference = (resumeText, skill) => {
+  const text = (resumeText || '').toLowerCase();
+  const s = (skill || '').toLowerCase().trim();
+  
+  // Find all whole-word occurrences of the skill
+  const regex = new RegExp(`\\b${s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'g');
+  const matches = [...text.matchAll(regex)];
+  
+  if (matches.length === 0) return true; // not found
+  
+  // Project indicator terms
+  const projectPatterns = [
+    'management system',
+    'management app',
+    'management portal',
+    'platform',
+    'app',
+    'application',
+    'portal',
+    'project',
+    'software',
+    'tool',
+    'website',
+    'dashboard',
+    'tracker',
+    'system'
+  ];
+  
+  // Check if all occurrences are part of a project title or description pattern
+  const allAreProjects = matches.every(match => {
+    const pos = match.index;
+    // Get surrounding context window (35 characters before and after)
+    const start = Math.max(0, pos - 35);
+    const end = Math.min(text.length, pos + s.length + 35);
+    const context = text.slice(start, end);
+    
+    return projectPatterns.some(pattern => context.includes(pattern));
+  });
+  
+  return allAreProjects;
+};
+
+// Strict ATS scoring engine
+const calculateATSScore = (rawRequiredSkills, rawCandidateSkills, experienceMatch, educationMatch, projectsMatch, resumeText, jobDesc) => {
+  const ignoreWords = ['project', 'product', 'team', 'development', 'system', 'application', 'technology', 'software'];
+  
+  const cleanArray = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .map(s => (s || '').trim())
+      .filter(s => s.length > 0)
+      .filter(s => !ignoreWords.includes(s.toLowerCase()));
+  };
+
+  const reqSkills = cleanArray(rawRequiredSkills);
+  const candSkills = cleanArray(rawCandidateSkills);
+
+  const reqCanonical = reqSkills.map(canonicalizeSkill);
+  const candCanonical = candSkills.map(canonicalizeSkill);
+
+  const matchedSkills = [];
+  const missingSkills = [];
+
+  reqSkills.forEach((skill, idx) => {
+    const canonical = reqCanonical[idx];
+    if (candCanonical.includes(canonical)) {
+      matchedSkills.push(skill);
+    } else {
+      missingSkills.push(skill);
+    }
+  });
+
+  // 1. Skills Match (60% weight)
+  let skillsScore = 0;
+  if (reqSkills.length > 0) {
+    skillsScore = (matchedSkills.length / reqSkills.length) * 60;
+  }
+
+  // 2. Experience Match (20% weight)
+  let experienceScore = 0;
+  const expMatchLower = (experienceMatch || '').toLowerCase();
+  if (expMatchLower.includes('strong') || expMatchLower.includes('excellent') || expMatchLower.includes('perfect') || expMatchLower.includes('highly')) {
+    experienceScore = 20;
+  } else if (expMatchLower.includes('moderate') || expMatchLower.includes('good') || expMatchLower.includes('partial') || expMatchLower.includes('benchmarks')) {
+    experienceScore = 12;
+  } else if (expMatchLower.includes('weak') || expMatchLower.includes('poor') || expMatchLower.includes('insufficient')) {
+    experienceScore = 5;
+  }
+
+  // 3. Education Match (10% weight)
+  let educationScore = 0;
+  const eduMatchLower = (educationMatch || '').toLowerCase();
+  if (eduMatchLower.includes('strong') || eduMatchLower.includes('perfect') || eduMatchLower.includes('matches') || eduMatchLower.includes('align')) {
+    educationScore = 10;
+  } else if (eduMatchLower.includes('moderate') || eduMatchLower.includes('partial') || eduMatchLower.includes('related')) {
+    educationScore = 6;
+  } else if (eduMatchLower.includes('weak') || eduMatchLower.includes('poor')) {
+    educationScore = 2;
+  }
+
+  // 4. Projects Match (10% weight)
+  let projectsScore = 0;
+  const projMatchLower = (projectsMatch || '').toLowerCase();
+  if (projMatchLower.includes('strong') || projMatchLower.includes('excellent') || projMatchLower.includes('perfect') || projMatchLower.includes('highly')) {
+    projectsScore = 10;
+  } else if (projMatchLower.includes('moderate') || projMatchLower.includes('good') || projMatchLower.includes('partial') || projMatchLower.includes('some')) {
+    projectsScore = 6;
+  } else if (projMatchLower.includes('weak') || projMatchLower.includes('poor') || projMatchLower.includes('insufficient')) {
+    projectsScore = 2;
+  }
+
+  let matchPercentage = Math.round(skillsScore + experienceScore + educationScore + projectsScore);
+
+  // Strict ATS Rules:
+  if (reqSkills.length > 0) {
+    const missingRatio = missingSkills.length / reqSkills.length;
+    if (missingRatio > 0.70) {
+      matchPercentage = Math.min(matchPercentage, 20);
+    } else if (missingRatio > 0.50) {
+      matchPercentage = Math.min(matchPercentage, 40);
+    }
+    if (matchedSkills.length === 0) {
+      matchPercentage = Math.min(matchPercentage, 14);
+    }
+  } else {
+    matchPercentage = Math.min(matchPercentage, 14);
+  }
+
+  let recommendation = 'Weak Match';
+  if (matchPercentage >= 80) {
+    recommendation = 'Strong Match';
+  } else if (matchPercentage >= 60) {
+    recommendation = 'Moderate Match';
+  }
+
+  return {
+    matchPercentage,
+    matchedSkills,
+    missingSkills,
+    recommendation
+  };
+};
+
 export const geminiService = {
   /**
    * AI Resume Screening based on strict JD criteria weights
@@ -58,46 +226,33 @@ export const geminiService = {
     try {
       const prompt = `
         You are an AI Recruitment Assistant.
-        Your task is to compare a candidate's resume against the uploaded Job Description and calculate how well the candidate matches the role.
+        Your task is to compare a candidate's resume against the Job Description and extract technical skills, experience details, education compatibility, and project relevancy.
 
-        Rules:
-        * Do NOT calculate the score using semantic similarity.
-        * Calculate the score strictly based on:
-          1. Required skills match.
-          2. Experience requirements match.
-          3. Education requirements match.
-        * Ignore generic words such as: Project, Product, Team, Development, System, Application, Technology, Software.
-        * Only count explicit technical skills.
-        * Do NOT consider project names, project titles, or application names as proof of professional skills (e.g., building an HR Management System does NOT mean they have HR Operations experience; building a Payroll App does NOT mean they have Payroll expertise; building a Recruitment Platform does NOT mean they have Talent Acquisition experience).
-        * Only consider explicit skills, work experience, certifications, education, and responsibilities mentioned in the resume.
-        * If more than 70% of required skills are missing, the final matchPercentage must not exceed 30% (cap it at 30%).
-        * Return the exact matched skills and missing skills used for scoring in "matchedSkills" and "missingSkills" arrays.
-        * Do not give random or arbitrary scores. Base the score strictly on the Job Description.
-
-        Scoring Weights:
-        * Skills Match = 50% (Proportion of required explicit technical skills matched)
-        * Experience Match = 25% (Align candidate's years/depth of experience with Job Description requirements)
-        * Education Match = 10% (Align candidate's degree with Job Description requirements)
-        * Projects & Achievements = 15% (Align candidate's achievements/projects with Job Description responsibilities)
+        Rules for extraction:
+        1. Do NOT calculate the matching score yourself.
+        2. Never infer domain skills from candidate project names, application titles, or website creations. E.g., if a candidate has a project named "HR Management System", do NOT infer that they have "HR", "Human Resources", "Recruitment", "Payroll", or "Onboarding" skills. If they built a "Recruitment Platform", do NOT infer they have "Talent Acquisition" or "Recruitment" skills. If they built a "Payroll Application", do NOT infer "Payroll" expertise. Only extract skills if the candidate has explicit work experience, certifications, or has listed them in their skills section.
+        3. Ignore generic words such as: Project, Product, Team, Development, System, Application, Technology, Software.
+        4. Extract the required skills list strictly from the Job Description.
+        5. Extract candidate skills from BOTH the resume text and the explicit skills field provided below.
+        6. Extract only explicit, technical domain skills.
 
         Provide the output strictly in JSON format matching this schema:
         {
-          "matchPercentage": number, // Sum of: Skills Match (0-50) + Experience Match (0-25) + Education Match (0-10) + Projects Match (0-15). Cap strictly at 30 if >70% of required skills are missing.
-          "matchedSkills": [string], // Exact explicit technical skills found in both JD and resume (excluding generic words)
-          "missingSkills": [string], // Exact explicit technical skills found in JD but missing in resume (excluding generic words)
-          "experienceMatch": string, // Explanation of experience comparison
-          "educationMatch": string, // Explanation of education comparison
+          "requiredSkills": [string], // List of technical skills required in the Job Description
+          "candidateSkills": [string], // List of explicit candidate skills found in resume or provided list
+          "experienceMatch": string, // "Strong Match" | "Moderate Match" | "Weak Match" plus explanation
+          "educationMatch": string, // "Strong Match" | "Moderate Match" | "Weak Match" plus explanation
+          "projectsMatch": string, // "Strong Match" | "Moderate Match" | "Weak Match" plus explanation
           "strengths": [string],
           "weaknesses": [string],
-          "summary": string, // Provide the exact mathematical breakdown (e.g., Skills Match: X/50, Experience Match: Y/25, Education Match: Z/10, Projects Match: W/15) followed by a short summary
-          "recommendation": "Strong Match" | "Moderate Match" | "Weak Match" // "Strong Match" if matchPercentage >= 80, "Moderate Match" if 60-79, "Weak Match" if < 60
+          "summary": string
         }
         Respond ONLY with the JSON. Do not include markdown code block syntax. Just raw JSON.
 
         JOB DESCRIPTION:
         ${jobDescription}
 
-        CANDIDATE SKILLS:
+        CANDIDATE SKILLS FIELD:
         ${skills || "Not explicitly listed"}
 
         CANDIDATE RESUME:
@@ -107,8 +262,30 @@ export const geminiService = {
       const result = await generateWithModelFallback(genAI, prompt);
       const response = await result.response;
       const parsed = cleanJSONResponse(response.text());
-      parsed.matchScore = parsed.matchPercentage; // map for frontend backwards compatibility
-      return parsed;
+      
+      const scoreData = calculateATSScore(
+        parsed.requiredSkills || [],
+        parsed.candidateSkills || [],
+        parsed.experienceMatch || "",
+        parsed.educationMatch || "",
+        parsed.projectsMatch || "",
+        resumeText,
+        jobDescription
+      );
+
+      return {
+        matchPercentage: scoreData.matchPercentage,
+        matchScore: scoreData.matchPercentage, // compatibility
+        matchedSkills: scoreData.matchedSkills,
+        missingSkills: scoreData.missingSkills,
+        strengths: parsed.strengths || [],
+        weaknesses: parsed.weaknesses || [],
+        experienceMatch: parsed.experienceMatch || "",
+        educationMatch: parsed.educationMatch || "",
+        projectsMatch: parsed.projectsMatch || "",
+        summary: parsed.summary || `ATS Summary: Match percentage is ${scoreData.matchPercentage}%. Matched: ${scoreData.matchedSkills.join(', ') || 'None'}. Missing: ${scoreData.missingSkills.join(', ') || 'None'}.`,
+        recommendation: scoreData.recommendation
+      };
     } catch (e) {
       console.warn('Backend Gemini API resume screening error, falling back to mock screen:', e);
       return this.mockScreenResume(jobDescription, resumeText, skills);
@@ -122,121 +299,151 @@ export const geminiService = {
     const resumeLower = cleanText(resumeText);
 
     const skillKeywords = [
-      'react', 'node', 'javascript', 'typescript', 'tailwind', 'python', 'sql', 'aws', 'docker', 'kubernetes',
-      'java', 'golang', 'rust', 'vue', 'angular', 'html', 'css', 'mongodb', 'postgresql', 'mysql', 'git',
-      'ci/cd', 'jenkins', 'github', 'jira', 'agile', 'scrum', 'sales', 'marketing', 'seo', 'sem', 'hr',
-      'recruitment', 'payroll', 'onboarding', 'finance', 'accounting', 'excel', 'management', 'leadership',
-      'communication', 'collaboration', 'design', 'figma'
+      // Frontend
+      'react', 'react.js', 'reactjs', 'vue', 'vue.js', 'vuejs', 'angular', 'angularjs', 'angular.js',
+      'svelte', 'next.js', 'nextjs', 'nuxt.js', 'nuxtjs', 'gatsby', 'html', 'html5', 'css', 'css3',
+      'tailwind', 'tailwindcss', 'bootstrap', 'sass', 'scss', 'less', 'framer motion', 'vite', 'webpack',
+      'redux', 'redux toolkit', 'redux-toolkit', 'zustand', 'recoil', 'context api',
+      // Backend & Languages
+      'node', 'node.js', 'nodejs', 'express', 'express.js', 'expressjs', 'javascript', 'js', 'typescript', 'ts',
+      'python', 'py', 'java', 'spring', 'spring boot', 'springboot', 'go', 'golang', 'rust', 'ruby', 'rails',
+      'php', 'laravel', 'c#', 'c++', 'c', 'dotnet', '.net', 'asp.net', 'django', 'flask', 'fastapi',
+      // Database & API
+      'mongodb', 'mongo', 'postgresql', 'postgres', 'mysql', 'sql', 'sqlite', 'redis', 'memcached',
+      'graphql', 'apollo', 'rest api', 'restful api', 'api', 'apis', 'grpc', 'web sockets', 'websocket',
+      // Cloud, DevOps & Tools
+      'aws', 'amazon web services', 'azure', 'gcp', 'google cloud', 'docker', 'kubernetes', 'k8s',
+      'ci/cd', 'github actions', 'jenkins', 'gitlab', 'circleci', 'terraform', 'ansible', 'prometheus', 'grafana',
+      'git', 'github', 'gitlab', 'bitbucket', 'jira', 'confluence', 'agile', 'scrum',
+      // AI / ML / Data Science
+      'ai', 'artificial intelligence', 'ml', 'machine learning', 'deep learning', 'nlp', 'natural language processing',
+      'cv', 'computer vision', 'pytorch', 'tensorflow', 'keras', 'scikit-learn', 'pandas', 'numpy',
+      'langchain', 'llm', 'large language models', 'openai', 'gemini', 'anthropic', 'vector database', 'vector databases',
+      'pinecone', 'milvus', 'chromadb', 'weaviate', 'rag', 'retrieval-augmented generation',
+      // Design & UI/UX
+      'figma', 'sketch', 'adobe xd', 'ui', 'ux', 'ui/ux', 'design', 'wireframing', 'prototyping',
+      // HR & Recruitment (JD specific keywords)
+      'hr', 'human resources', 'recruitment', 'recruiting', 'payroll', 'onboarding', 'sourcing',
+      'talent acquisition', 'employee engagement', 'performance scorecards', 'hr policies'
     ];
 
     const ignoreWords = ['project', 'product', 'team', 'development', 'system', 'application', 'technology', 'software'];
     const filteredSkillKeywords = skillKeywords.filter(k => !ignoreWords.includes(k));
 
-    // Identify required skills from Job Description
-    const requiredSkills = filteredSkillKeywords.filter(skill => descLower.includes(skill));
+    // Extract required skills from JD
+    const requiredSkills = [];
+    filteredSkillKeywords.forEach(skill => {
+      const s = skill.toLowerCase();
+      const regex = new RegExp(`\\b${s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'i');
+      if (regex.test(descLower) && !requiredSkills.includes(skill)) {
+        requiredSkills.push(skill);
+      }
+    });
 
-    // Only use explicitly provided candidate skills from the `skills` parameter (exclude ignore words)
-    const candSkills = (skills || '')
-      .toLowerCase()
-      .split(',')
+    // Extract candidate skills from skills parameter
+    const skillsList = (skills || '')
+      .split(/[,\n;]+/)
       .map(s => s.trim())
-      .filter(s => s.length > 0 && !ignoreWords.includes(s));
+      .filter(s => s.length > 0);
 
-    // Match candidate skills against required skills
-    const matchedSkills = requiredSkills.filter(skill => candSkills.includes(skill));
-    const missingSkills = requiredSkills.filter(skill => !candSkills.includes(skill));
-    
-    // 1. Skills Match (50% max)
-    let skillsScore = 0;
-    if (requiredSkills.length > 0) {
-      skillsScore = (matchedSkills.length / requiredSkills.length) * 50;
-    }
+    // Extract candidate skills from resume, preventing inferences from project names
+    const resumeSkills = [];
+    filteredSkillKeywords.forEach(skill => {
+      const s = skill.toLowerCase();
+      const regex = new RegExp(`\\b${s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'i');
+      if (regex.test(resumeLower)) {
+        if (DOMAIN_SENSITIVE_SKILLS.includes(s)) {
+          if (!isProjectInference(resumeText, s)) {
+            resumeSkills.push(skill);
+          }
+        } else {
+          resumeSkills.push(skill);
+        }
+      }
+    });
 
-    // 2. Experience Match (25% max) - baseline experienceScore = 0
-    let experienceScore = 0;
-    let experienceMatch = "No matching experience requirements identified.";
+    const candidateSkills = Array.from(new Set([...skillsList, ...resumeSkills]));
+
+    // Experience Match details
     const hasSrRole = resumeLower.includes('senior') || resumeLower.includes('lead') || resumeLower.includes('manager');
     const requiresSrRole = descLower.includes('senior') || descLower.includes('lead') || descLower.includes('manager');
-    
-    if (hasSrRole && requiresSrRole) {
-      experienceScore = 25;
-      experienceMatch = "Strong Match. Experience level aligns with the senior/leadership requirements.";
-    } else if (!requiresSrRole && resumeLower.includes('developer')) {
-      experienceScore = 15;
-      experienceMatch = "Moderate Match. Experience aligns with professional developer benchmarks.";
+    let experienceMatch = "Weak Match. Experience alignment needs review.";
+    if (requiresSrRole) {
+      if (hasSrRole) {
+        experienceMatch = "Strong Match. Candidate experience aligns with leadership requirements.";
+      } else {
+        experienceMatch = "Weak Match. Role requires leadership/senior experience which candidate lacks.";
+      }
+    } else {
+      if (hasSrRole || resumeLower.includes('developer') || resumeLower.includes('engineer') || resumeLower.includes('specialist')) {
+        experienceMatch = "Strong Match. Candidate has good professional experience.";
+      } else {
+        experienceMatch = "Moderate Match. Candidate has some professional experience.";
+      }
     }
 
-    // 3. Education Match (10% max) - baseline educationScore = 0
-    let educationScore = 0;
-    let educationMatch = "No matching education credentials identified.";
-    const degreeKeywords = ['btech', 'mtech', 'bca', 'mca', 'bachelor', 'master', 'degree', 'phd', 'graduate'];
+    // Education Match details
+    const degreeKeywords = ['btech', 'mtech', 'bca', 'mca', 'bachelor', 'master', 'degree', 'phd', 'graduate', 'computer science', 'mba', 'bba'];
     const jdDegrees = degreeKeywords.filter(d => descLower.includes(d));
     const resumeDegrees = degreeKeywords.filter(d => resumeLower.includes(d));
-    
-    if (jdDegrees.length > 0) {
+    let educationMatch = "Weak Match. Academic credentials not matching.";
+    if (jdDegrees.length === 0) {
+      educationMatch = "Strong Match. No specific degree required, candidate credentials are acceptable.";
+    } else {
       const matchedDegrees = jdDegrees.filter(d => resumeDegrees.includes(d));
       if (matchedDegrees.length > 0) {
-        educationScore = 10;
-        educationMatch = "Strong Match. Academic credentials align with job requirements.";
+        educationMatch = "Strong Match. Academic degree matches requirements.";
+      } else if (resumeDegrees.length > 0) {
+        educationMatch = "Moderate Match. Candidate has a related degree.";
       }
     }
 
-    // 4. Projects & Achievements (15% max) - baseline projectsScore = 0
-    let projectsScore = 0;
-    // Check for explicit achievements/responsibilities keywords (avoiding project name inferences)
-    if (resumeLower.includes('achieved') || resumeLower.includes('responsible') || resumeLower.includes('led') || resumeLower.includes('implemented')) {
-      projectsScore = 15;
-    }
-
-    // Sum matching components
-    let matchPercentage = Math.round(skillsScore + experienceScore + educationScore + projectsScore);
-
-    // Apply strict check: If more than 70% of required skills are missing, matchPercentage must not exceed 20%
+    // Projects Match details
+    let projectsMatch = "Weak Match. Projects do not show strong alignment with job requirements.";
+    const reqCanonical = requiredSkills.map(canonicalizeSkill);
+    const candCanonical = candidateSkills.map(canonicalizeSkill);
+    const matchedCount = reqCanonical.filter(c => candCanonical.includes(c)).length;
+    
     if (requiredSkills.length > 0) {
-      const missingRatio = missingSkills.length / requiredSkills.length;
-      if (missingRatio > 0.70) {
-        matchPercentage = Math.min(matchPercentage, 20);
+      const matchRatio = matchedCount / requiredSkills.length;
+      if (matchRatio >= 0.75) {
+        projectsMatch = "Strong Match. Candidate's projects and experience strongly align with core technologies.";
+      } else if (matchRatio >= 0.40) {
+        projectsMatch = "Moderate Match. Projects display partial relevance to the required skill set.";
       }
+    } else {
+      projectsMatch = "Strong Match. No specific projects required.";
     }
 
-    const matchScore = matchPercentage; // compatibility
-
-    const strengths = [];
-    matchedSkills.slice(0, 3).forEach(skill => {
-      strengths.push(`Possesses required technical skill: ${skill.toUpperCase()}`);
-    });
-    if (experienceScore >= 20) {
-      strengths.push("Experience matches job requirements.");
-    }
-    if (strengths.length === 0) {
-      strengths.push("Meets base professional benchmarks.");
-    }
-
-    const weaknesses = [];
-    missingSkills.slice(0, 2).forEach(skill => {
-      weaknesses.push(`Missing required skill: ${skill.toUpperCase()}`);
-    });
-    if (weaknesses.length === 0 && requiredSkills.length > 0) {
-      weaknesses.push("No major skill gaps identified.");
-    }
-
-    let recommendation = 'Moderate Match';
-    if (matchPercentage >= 80) recommendation = 'Strong Match';
-    else if (matchPercentage < 60) recommendation = 'Weak Match';
-
-    const summary = `ATS Evaluation: Profile match score is evaluated at ${matchPercentage}%. Skills Match: ${Math.round(skillsScore)}/50%, Experience Match: ${experienceScore}/25%, Education Match: ${educationScore}/10%, Projects Match: ${projectsScore}/15%.`;
-
-    return {
-      matchPercentage,
-      matchScore, // compatibility
-      matchedSkills,
-      missingSkills,
+    const scoreData = calculateATSScore(
+      requiredSkills,
+      candidateSkills,
       experienceMatch,
       educationMatch,
+      projectsMatch,
+      resumeText,
+      jobDesc
+    );
+
+    const strengths = scoreData.matchedSkills.map(sk => `Matches required technical skill: ${sk.toUpperCase()}`);
+    if (experienceMatch.includes('Strong')) strengths.push("Experience matches job level.");
+    if (strengths.length === 0) strengths.push("Basic professional background.");
+
+    const weaknesses = scoreData.missingSkills.map(sk => `Missing technical skill: ${sk.toUpperCase()}`);
+    if (weaknesses.length === 0) weaknesses.push("None identified.");
+
+    return {
+      matchPercentage: scoreData.matchPercentage,
+      matchScore: scoreData.matchPercentage, // compatibility
+      matchedSkills: scoreData.matchedSkills,
+      missingSkills: scoreData.missingSkills,
       strengths,
       weaknesses,
-      summary,
-      recommendation
+      experienceMatch,
+      educationMatch,
+      projectsMatch,
+      summary: `ATS Summary: Match percentage is ${scoreData.matchPercentage}%. Matched: ${scoreData.matchedSkills.join(', ') || 'None'}. Missing: ${scoreData.missingSkills.join(', ') || 'None'}.`,
+      recommendation: scoreData.recommendation
     };
   },
 
@@ -445,5 +652,285 @@ export const geminiService = {
     }
 
     return `Hello ${name}! I'm your SmartHR Assistant. I can help you check your leave balance, view salary details, check-in records, or answer questions about company policies. How can I help you today?`;
+  },
+
+  // Main matching function with Gemini AI integration
+  async matchResume(resume, job) {
+    const resumeText = normalize(resume || "");
+    const jobDescription = job?.description ? String(job.description) : "";
+    const jobTitle = job?.title ? String(job.title) : "";
+    
+    // Extract required skills ONLY from job.skills array OR Explicit "Required Skills" section
+    const rawSkills = [];
+    if (Array.isArray(job?.skills)) {
+      job.skills.forEach(s => {
+        if (typeof s === 'string' && s.trim()) {
+          rawSkills.push(s.trim());
+        }
+      });
+    }
+
+    // Check for "Required Skills" or "Key Skills" explicitly
+    const patterns = [
+      /required skills\s*[:\-]?\s*([^\n]+(?:\n\s*[-*•]?\s*[^\n]+)*)/i,
+      /key skills\s*[:\-]?\s*([^\n]+(?:\n\s*[-*•]?\s*[^\n]+)*)/i
+    ];
+    for (const pattern of patterns) {
+      const match = jobDescription.match(pattern);
+      if (match) {
+        const lines = match[1].split(/[\n,;•\-*]+/);
+        lines.forEach(line => {
+          const cleaned = line.trim();
+          if (cleaned && !cleaned.toLowerCase().includes("experience") && !cleaned.toLowerCase().includes("education") && cleaned.length < 50) {
+            rawSkills.push(cleaned);
+          }
+        });
+        break; // Only extract from first matched section
+      }
+    }
+
+    // Normalize and alias map skills:
+    const ALIAS_MAP = {
+      "js": "javascript",
+      "javascript": "javascript",
+      "reactjs": "react",
+      "react.js": "react",
+      "react": "react",
+      "nodejs": "node",
+      "node.js": "node",
+      "node": "node",
+      "mongo": "mongodb",
+      "mongodb": "mongodb",
+      "api": "api",
+      "apis": "api",
+      "rest api": "api",
+      "restful api": "api",
+      "ai": "artificial intelligence",
+      "artificial intelligence": "artificial intelligence"
+    };
+
+    const normalizedSkills = rawSkills.map(s => {
+      const cleaned = s.toLowerCase().trim();
+      return ALIAS_MAP[cleaned] || cleaned;
+    });
+
+    // Remove duplicates after normalization
+    const declaredSkills = Array.from(new Set(normalizedSkills)).filter(s => s.length > 0);
+
+    // Validation
+    if (!resumeText || resumeText.length < 20) {
+      return {
+        score: 0,
+        matchedSkills: [],
+        missingSkills: declaredSkills.slice(0, 8),
+        isMatch: false,
+        rejectionReason: "Resume text is too short or empty",
+        aiSummary: "Unable to analyze - insufficient resume content",
+        confidenceLevel: "low",
+      };
+    }
+
+    if (declaredSkills.length === 0) {
+      return {
+        score: 0,
+        matchedSkills: [],
+        missingSkills: [],
+        isMatch: false,
+        rejectionReason: "Job must have declared skills for matching",
+        aiSummary: "Job posting lacks required skills list",
+        confidenceLevel: "low",
+      };
+    }
+
+    // Step 1: Basic skill matching with alias/normalization checks
+    const matchedSkills = [];
+    const missingSkills = [];
+
+    // Helper to check candidate skills with alias support
+    const candidateHasSkill = (normalizedSkill, text) => {
+      const ALIASES = {
+        "javascript": ["js", "javascript", "es6"],
+        "react": ["react", "reactjs", "react.js"],
+        "node": ["node", "node.js", "nodejs"],
+        "mongodb": ["mongo", "mongodb"],
+        "api": ["api", "apis", "rest api", "restful api"],
+        "artificial intelligence": ["ai", "artificial intelligence"]
+      };
+      const synonyms = ALIASES[normalizedSkill] || [normalizedSkill];
+      return synonyms.some(syn => phrasePresent(syn, text));
+    };
+
+    declaredSkills.forEach((skill) => {
+      if (candidateHasSkill(skill, resumeText)) {
+        matchedSkills.push(skill);
+      } else {
+        missingSkills.push(skill);
+      }
+    });
+
+    const skillRatio = declaredSkills.length > 0
+      ? matchedSkills.length / declaredSkills.length
+      : 0;
+
+    // Step 2: Keyword overlap analysis
+    const keywordScore = calculateKeywordScore(resumeText, jobDescription);
+
+    // Step 3: Use Gemini AI for intelligent analysis
+    let aiAnalysis = null;
+    let aiScore = 0;
+    let aiSummary = "";
+
+    try {
+      const genAI = getGeminiClient();
+      if (!genAI) throw new Error("Gemini client is not initialized");
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const prompt = `You are an expert recruiter analyzing candidate-job fit.
+
+Job Title: ${jobTitle}
+Required Skills: ${declaredSkills.join(", ")}
+Job Description: ${jobDescription.substring(0, 500)}
+
+Candidate Resume: ${resume.substring(0, 1000)}
+
+Task: Analyze if this candidate is a good match for this job. Consider:
+1. Skills alignment (technical and soft skills)
+2. Experience relevance
+3. Domain knowledge
+4. Overall fit
+
+Respond in JSON format:
+{
+  "matchScore": <number 0-100>,
+  "isRelevant": <boolean>,
+  "summary": "<2-3 sentence analysis>",
+  "confidence": "<high/medium/low>",
+  "keyStrengths": ["<strength1>", "<strength2>"],
+  "concerns": ["<concern1>", "<concern2>"]
+}`;
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+
+      // Extract JSON from response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        aiAnalysis = JSON.parse(jsonMatch[0]);
+        aiScore = aiAnalysis.matchScore || 0;
+        aiSummary = aiAnalysis.summary || "";
+      }
+    } catch (error) {
+      console.error("Gemini API Error:", error.message);
+      // Fallback if Gemini fails - use basic scoring
+      aiScore = Math.round((skillRatio * 0.6 + keywordScore * 0.4) * 100);
+      aiSummary = "AI analysis unavailable - using basic keyword matching";
+    }
+
+    // Step 4: Calculate final score (weighted combination)
+    const skillScore = Math.round(skillRatio * 100);
+    const keywordScorePercent = Math.round(keywordScore * 100);
+
+    // Weighted scoring: AI (50%), Skills (30%), Keywords (20%)
+    const finalScore = aiAnalysis
+      ? Math.round(aiScore * 0.5 + skillScore * 0.3 + keywordScorePercent * 0.2)
+      : Math.round(skillScore * 0.6 + keywordScorePercent * 0.4);
+
+    // Step 5: Determine match status with strict thresholds
+    const MIN_SCORE = 30; // Minimum 30% to be considered a match
+    const MIN_SKILLS = 3; // Or at least 3 matching skills
+    const MIN_SKILL_RATIO = 0.4; // Or 40% of required skills
+
+    const isMatch = finalScore >= MIN_SCORE &&
+      (matchedSkills.length >= MIN_SKILLS || skillRatio >= MIN_SKILL_RATIO);
+
+    // Step 6: Determine confidence level
+    let confidenceLevel = "low";
+    if (finalScore >= 70 && matchedSkills.length >= 5) {
+      confidenceLevel = "high";
+    } else if (finalScore >= 50 && matchedSkills.length >= 3) {
+      confidenceLevel = "medium";
+    }
+
+    // Step 7: Generate rejection reason if not a match
+    let rejectionReason = "";
+    if (!isMatch) {
+      if (matchedSkills.length === 0) {
+        rejectionReason = "No matching skills found - completely different profile";
+      } else if (skillRatio < MIN_SKILL_RATIO) {
+        rejectionReason = `Only ${matchedSkills.length}/${declaredSkills.length} required skills matched (need ${Math.ceil(declaredSkills.length * MIN_SKILL_RATIO)}+)`;
+      } else if (finalScore < MIN_SCORE) {
+        rejectionReason = `Match score ${finalScore}% is below minimum threshold of ${MIN_SCORE}%`;
+      } else {
+        rejectionReason = "Insufficient overall relevance to job requirements";
+      }
+    }
+
+    // Step 8: Enhance AI summary
+    if (!aiSummary && aiAnalysis) {
+      const strengths = aiAnalysis.keyStrengths?.join(", ") || "";
+      const concerns = aiAnalysis.concerns?.join(", ") || "";
+      aiSummary = `Strengths: ${strengths}. Concerns: ${concerns}`;
+    } else if (!aiSummary) {
+      aiSummary = isMatch
+        ? `Candidate shows ${confidenceLevel} alignment with job requirements`
+        : `Candidate profile does not align with job requirements`;
+    }
+
+    return {
+      score: finalScore,
+      matchedSkills: matchedSkills.slice(0, 8),
+      missingSkills: missingSkills.slice(0, 8),
+      isMatch,
+      rejectionReason,
+      aiSummary,
+      confidenceLevel,
+    };
   }
 };
+
+const STOPWORDS = new Set([
+  "the", "and", "for", "with", "that", "this", "from", "have", "has",
+  "will", "your", "you", "are", "but", "not", "can", "our"
+]);
+
+// Normalize text for comparison
+function normalize(text = "") {
+  return String(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Extract meaningful words from text
+function wordsFrom(text) {
+  return normalize(text)
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOPWORDS.has(w));
+}
+
+// Check if a phrase/skill is present in text
+function phrasePresent(phrase, text) {
+  const p = normalize(phrase).trim();
+  const t = normalize(text);
+  if (!p) return false;
+
+  const isSingle = p.split(/\s+/).length === 1;
+  if (isSingle) {
+    const esc = p.replace(/[.*+?^${}()|[\]{}]/g, "\\$&");
+    const re = new RegExp("\\b" + esc + "\\b", "i");
+    return re.test(t);
+  }
+  return t.includes(p);
+}
+
+// Calculate basic keyword overlap score
+function calculateKeywordScore(resumeText, jobDescription) {
+  const jobWords = [...new Set(wordsFrom(jobDescription))];
+  const resumeWords = [...new Set(wordsFrom(resumeText))];
+
+  if (jobWords.length === 0) return 0;
+
+  const matched = jobWords.filter((w) => resumeWords.includes(w));
+  return matched.length / jobWords.length;
+}
