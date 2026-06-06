@@ -18,9 +18,23 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for frontend Vite development server
+// Enable CORS for frontend Vite development server and production/Vercel URLs
+const allowedOrigins = [
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    if (!origin) return callback(null, true);
+
+    const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
@@ -75,7 +89,7 @@ app.post('/api/candidate/auth/register', async (req, res) => {
     }
 
     const newSeeker = await db.addJobSeeker({ name, email, password });
-    
+
     const token = jwt.sign(
       { email: newSeeker.email, name: newSeeker.name, role: 'Candidate' },
       JWT_SECRET,
@@ -266,7 +280,7 @@ app.post('/api/candidates/:id/screen', authenticateToken, authorizeRoles('Admin'
     const jobDescStr = job ? `${job.title} - ${job.description}` : 'General Role';
 
     const result = await geminiService.screenResume(jobDescStr, candidate.resumeText, candidate.skills);
-    
+
     candidate.matchScore = result.matchScore;
     candidate.evaluation = result;
     candidate.status = (result.recommendation === 'Strong Match' || result.recommendation === 'Recommended') ? 'Interviewing' : 'Screening';
@@ -398,13 +412,13 @@ app.get('/api/employees', authenticateToken, authorizeRoles('Admin', 'Senior Man
 app.post('/api/employees', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
   try {
     const { name, email, role, department, designation, salary, password } = req.body;
-    
+
     if (!name || !email || !role || !department || !designation || !salary || !password) {
       return res.status(400).json({ error: 'Missing required employee fields, including password' });
     }
 
     const list = await db.getEmployees();
-    
+
     // Check if email already exists
     const exists = list.find(e => e.email.toLowerCase() === email.toLowerCase());
     if (exists) {
@@ -450,7 +464,7 @@ app.post('/api/attendance/check-in', authenticateToken, async (req, res) => {
   try {
     const { employeeId } = req.body;
     if (!employeeId) return res.status(400).json({ error: 'Missing employeeId' });
-    
+
     // Secure Check-In restriction: employees can only check in for themselves
     if (req.user.role !== 'Admin' && req.user.id !== employeeId) {
       return res.status(403).json({ error: 'Access denied. You cannot check in for another employee.' });
@@ -467,7 +481,7 @@ app.post('/api/attendance/check-out', authenticateToken, async (req, res) => {
   try {
     const { employeeId } = req.body;
     if (!employeeId) return res.status(400).json({ error: 'Missing employeeId' });
-    
+
     // Secure Check-Out restriction: employees can only check out for themselves
     if (req.user.role !== 'Admin' && req.user.id !== employeeId) {
       return res.status(403).json({ error: 'Access denied. You cannot check out for another employee.' });
