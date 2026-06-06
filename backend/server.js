@@ -6,7 +6,6 @@ import { db } from './db/dbConnector.js';
 import jwt from 'jsonwebtoken';
 import { geminiService } from './services/geminiService.js';
 import multer from 'multer';
-import { PDFParse } from 'pdf-parse';
 
 dotenv.config();
 
@@ -77,6 +76,21 @@ const authorizeRoles = (...allowedRoles) => {
 };
 
 // --- API Endpoints ---
+
+app.get('/', (req, res) => {
+  res.json({
+    message: 'SmartHRMS API is running successfully.',
+    status: 'healthy',
+    timestamp: new Date()
+  });
+});
+
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'Welcome to the SmartHRMS Backend API.',
+    version: '1.0.0'
+  });
+});
 
 // --- Candidate Portal Auth & Profile Endpoints ---
 app.post('/api/candidate/auth/register', async (req, res) => {
@@ -194,6 +208,7 @@ app.post('/api/candidate/profile/resume', authenticateToken, upload.single('resu
       return res.status(400).json({ error: 'No PDF file uploaded.' });
     }
 
+    const { PDFParse } = await import('pdf-parse');
     const parser = new PDFParse({ data: req.file.buffer });
     const parsedPdf = await parser.getText();
     const textContent = parsedPdf.text || '';
@@ -239,6 +254,7 @@ app.post('/api/candidate/apply', authenticateToken, upload.single('resume'), asy
     let resumeFileName = seeker.resumeFileName;
 
     if (req.file) {
+      const { PDFParse } = await import('pdf-parse');
       const parser = new PDFParse({ data: req.file.buffer });
       const parsedPdf = await parser.getText();
       resumeText = parsedPdf.text || '';
@@ -306,6 +322,7 @@ app.post('/api/candidates/parse-resume', authenticateToken, authorizeRoles('Admi
       return res.status(400).json({ error: 'No PDF file uploaded.' });
     }
 
+    const { PDFParse } = await import('pdf-parse');
     const parser = new PDFParse({ data: req.file.buffer });
     const parsedPdf = await parser.getText();
     const textContent = parsedPdf.text || '';
