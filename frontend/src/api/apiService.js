@@ -153,6 +153,14 @@ export const apiService = {
     return handleResponse(res);
   },
 
+  async deleteJob(id) {
+    const res = await fetch(`${API_BASE}/jobs/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(null)
+    });
+    return handleResponse(res);
+  },
+
   // 5. Candidates
   async getCandidates() {
     const res = await fetch(`${API_BASE}/candidates`, {
@@ -356,6 +364,33 @@ export const apiService = {
       method: 'PUT',
       headers: getAuthHeaders('application/json'),
       body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
+  async updateEmployee(id, empData) {
+    const res = await fetch(`${API_BASE}/employees/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders('application/json'),
+      body: JSON.stringify(empData)
+    });
+    return handleResponse(res);
+  },
+
+  async updateJob(id, jobData) {
+    const res = await fetch(`${API_BASE}/jobs/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders('application/json'),
+      body: JSON.stringify(jobData)
+    });
+    return handleResponse(res);
+  },
+
+  async updatePolicy(title, policyData) {
+    const res = await fetch(`${API_BASE}/policies/${encodeURIComponent(title)}`, {
+      method: 'PUT',
+      headers: getAuthHeaders('application/json'),
+      body: JSON.stringify(policyData)
     });
     return handleResponse(res);
   }

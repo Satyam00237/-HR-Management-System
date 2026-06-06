@@ -309,7 +309,7 @@ app.put('/api/candidates/:id/status', authenticateToken, authorizeRoles('Admin',
   try {
     const { id } = req.params;
     const { status, interviewDate, interviewTime } = req.body;
-    if (!['Applied', 'Screening', 'Interviewing', 'Rejected', 'Offered'].includes(status)) {
+    if (!['Applied', 'Screening', 'Interviewing', 'Rejected', 'Offered', 'Hired'].includes(status)) {
       return res.status(400).json({ error: 'Invalid candidate status.' });
     }
 
@@ -575,6 +575,20 @@ app.post('/api/jobs', authenticateToken, authorizeRoles('Admin', 'HR Recruiter')
   }
 });
 
+app.delete('/api/jobs/:id', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const success = await db.deleteJob(id);
+    if (success) {
+      res.json({ success: true, message: 'Job deleted successfully.' });
+    } else {
+      res.status(404).json({ error: 'Job not found.' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete job.' });
+  }
+});
+
 // 5. Candidates Management
 app.get('/api/candidates', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
   try {
@@ -691,6 +705,48 @@ app.post('/api/ai/chatbot', authenticateToken, async (req, res) => {
     res.json({ answer });
   } catch (e) {
     res.status(500).json({ error: 'AI HR Chatbot assistant query failed' });
+  }
+});
+// Updatable endpoints for Admin
+app.put('/api/employees/:id', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await db.updateEmployee(id, req.body);
+    if (updated) {
+      res.json(updated);
+    } else {
+      res.status(404).json({ error: 'Employee not found' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update employee' });
+  }
+});
+
+app.put('/api/jobs/:id', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await db.updateJob(id, req.body);
+    if (updated) {
+      res.json(updated);
+    } else {
+      res.status(404).json({ error: 'Job not found' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update job' });
+  }
+});
+
+app.put('/api/policies/:title', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
+  try {
+    const { title } = req.params;
+    const updated = await db.updatePolicy(title, req.body);
+    if (updated) {
+      res.json(updated);
+    } else {
+      res.status(404).json({ error: 'Policy not found' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update policy' });
   }
 });
 

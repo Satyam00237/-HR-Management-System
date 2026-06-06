@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Search, Briefcase, FileText, CheckCircle, Clock, 
-  Play, Volume2, Mic, MicOff, RefreshCw, Star, Sparkles, Send, Award, MessageSquare, AlertCircle, Upload
+  Play, Volume2, Mic, MicOff, RefreshCw, Star, Sparkles, Send, Award, MessageSquare, AlertCircle, Upload,
+  Trash2
 } from 'lucide-react';
 import { apiService } from '../api/apiService';
 
@@ -122,6 +123,25 @@ export default function RecruiterDashboard({ activeSubTab, refreshKey, onTrigger
     } catch (err) {
       console.error(err);
       setJobMsg({ type: 'error', text: 'Failed to post job role.' });
+    }
+  };
+
+  const handleDeleteJob = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this job? This will also remove all candidate applications associated with it.")) return;
+    try {
+      await apiService.deleteJob(id);
+      const jList = await apiService.getJobs();
+      setJobs(jList);
+      
+      const cList = await apiService.getCandidates();
+      setCandidates(cList);
+      
+      if (onTriggerRefresh) {
+        onTriggerRefresh();
+      }
+    } catch (e) {
+      console.error("Failed to delete job role", e);
+      alert("Failed to delete job role: " + (e.message || e));
     }
   };
 
@@ -639,9 +659,18 @@ HR Generalist | FinTech Solutions (2023 - Present)
                         <h4 className="text-sm font-bold text-slate-200">{j.title}</h4>
                         <span className="text-[10px] text-slate-500 font-semibold uppercase">{j.department} • {j.location} • {j.type}</span>
                       </div>
-                      <span className="text-[9px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md">
-                        {j.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md">
+                          {j.status}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteJob(j.id)}
+                          title="Remove Job Posting"
+                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/30 text-rose-400 transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed font-sans">{j.description}</p>
                     <div className="flex items-center gap-2 text-[10px] text-indigo-300 font-bold pt-1.5 border-t border-slate-900/60">

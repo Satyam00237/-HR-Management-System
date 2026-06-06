@@ -9,6 +9,8 @@ const navItems = {
     { id: 'overview', name: 'Admin Dashboard', icon: ShieldAlert },
     { id: 'employees', name: 'Employees', icon: Users },
     { id: 'payroll', name: 'Payroll Control', icon: FileText },
+    { id: 'recruitment', name: 'Recruitment', icon: Briefcase, badge: 'AI' },
+    { id: 'reports', name: 'Reports', icon: FileText },
     { id: 'policies', name: 'Company Policies', icon: BookOpen }
   ],
   'Senior Manager': [

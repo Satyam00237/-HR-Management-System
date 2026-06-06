@@ -992,19 +992,19 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
               </div>
             ) : (
               <form onSubmit={handleApplySubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Candidate Name</label>
-                    <input
-                      type="text"
-                      value={applyName}
-                      onChange={(e) => setApplyName(e.target.value)}
-                      placeholder="Your name"
-                      required
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-550 placeholder-slate-700"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Candidate Name</label>
+                  <input
+                    type="text"
+                    value={applyName}
+                    onChange={(e) => setApplyName(e.target.value)}
+                    placeholder="Your name"
+                    required
+                    className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-550 placeholder-slate-700"
+                  />
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Highest Education</label>
                     <input
@@ -1014,20 +1014,6 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                       placeholder="e.g. Master of Computer Applications"
                       required
                       className="w-full bg-slate-955 border border-slate-855 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-550 placeholder-slate-700"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Core Skills</label>
-                    <input
-                      type="text"
-                      value={applySkills}
-                      onChange={(e) => setApplySkills(e.target.value)}
-                      placeholder="e.g. React, Node, CSS, Git"
-                      required
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-555 placeholder-slate-700"
                     />
                   </div>
 

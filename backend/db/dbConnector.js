@@ -325,6 +325,16 @@ export const db = {
     return newJob.toObject();
   },
 
+  async deleteJob(id) {
+    const result = await Job.deleteOne({ id });
+    if (result.deletedCount > 0) {
+      // Also delete candidates associated with this jobId
+      await Candidate.deleteMany({ jobId: id });
+      return true;
+    }
+    return false;
+  },
+
   // Candidates
   async getCandidates() {
     return await Candidate.find().sort({ createdAt: -1 }).lean();
@@ -449,6 +459,50 @@ export const db = {
     }
 
     return newApplication.toObject();
+  },
+
+  async updateEmployee(id, data) {
+    const emp = await Employee.findOne({ id });
+    if (emp) {
+      if (data.name !== undefined) emp.name = data.name;
+      if (data.email !== undefined) emp.email = data.email;
+      if (data.role !== undefined) emp.role = data.role;
+      if (data.department !== undefined) emp.department = data.department;
+      if (data.designation !== undefined) emp.designation = data.designation;
+      if (data.salary !== undefined) emp.salary = parseFloat(data.salary);
+      if (data.status !== undefined) emp.status = data.status;
+      await emp.save();
+      return emp.toObject();
+    }
+    return null;
+  },
+
+  async updateJob(id, data) {
+    const job = await Job.findOne({ id });
+    if (job) {
+      if (data.title !== undefined) job.title = data.title;
+      if (data.department !== undefined) job.department = data.department;
+      if (data.type !== undefined) job.type = data.type;
+      if (data.location !== undefined) job.location = data.location;
+      if (data.status !== undefined) job.status = data.status;
+      if (data.description !== undefined) job.description = data.description;
+      await job.save();
+      return job.toObject();
+    }
+    return null;
+  },
+
+  async updatePolicy(title, data) {
+    const policy = await Policy.findOne({ title });
+    if (policy) {
+      if (data.content !== undefined) policy.content = data.content;
+      if (data.title !== undefined && data.title !== title) {
+        policy.title = data.title;
+      }
+      await policy.save();
+      return policy.toObject();
+    }
+    return null;
   }
 };
 
