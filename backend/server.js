@@ -400,7 +400,8 @@ app.post('/api/auth/login', async (req, res) => {
       token
     });
   } catch (e) {
-    res.status(500).json({ error: 'Authentication failed' });
+    console.error('Login error:', e);
+    res.status(500).json({ error: 'Authentication failed', details: e.message || String(e) });
   }
 });
 
@@ -417,7 +418,8 @@ app.get('/api/employees/me', authenticateToken, async (req, res) => {
       res.status(404).json({ error: 'Employee profile not found' });
     }
   } catch (e) {
-    res.status(500).json({ error: 'Failed to retrieve profile' });
+    console.error('Error in /api/employees/me:', e);
+    res.status(500).json({ error: 'Failed to retrieve profile', details: e.message || String(e) });
   }
 });
 
@@ -628,7 +630,8 @@ app.get('/api/candidates', authenticateToken, authorizeRoles('Admin', 'HR Recrui
   try {
     res.json(await db.getCandidates());
   } catch (e) {
-    res.status(500).json({ error: 'Failed to fetch candidates' });
+    console.error('Error in GET /api/candidates:', e);
+    res.status(500).json({ error: 'Failed to fetch candidates', details: e.message || String(e) });
   }
 });
 
