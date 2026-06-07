@@ -25,6 +25,7 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
   
   // Webcam States & Refs
   const videoRef = useRef(null);
+  const recognitionRef = useRef(null);
   const [videoStream, setVideoStream] = useState(null);
 
   // Handle webcam stream based on isInterviewing status
@@ -53,6 +54,19 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
       videoRef.current.srcObject = videoStream;
     }
   }, [videoStream, isInterviewing]);
+
+  // Cleanup speech recognition on unmount or when ending interview
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.error('Failed to stop speech recognition on unmount:', e);
+        }
+      }
+    };
+  }, []);
   
   // Auth Modal States (Login / Registration)
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -163,6 +177,12 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
 
   // Start Voice Interview Flow
   const handleStartInterview = async (app) => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+    setIsListening(false);
     setActiveInterviewApp(app);
     setIsInterviewing(true);
     setInterviewRound(1);
@@ -197,12 +217,26 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
     if (!SpeechRecognition) return;
 
     if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (err) {
+          console.error('Error stopping recognition:', err);
+        }
+      }
       setIsListening(false);
       return;
     }
 
+    // Clear any existing instance
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {}
+    }
+
     const rec = new SpeechRecognition();
-    rec.continuous = false;
+    rec.continuous = true;
     rec.interimResults = false;
     rec.lang = 'en-US';
 
@@ -211,19 +245,32 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
     };
 
     rec.onresult = (event) => {
-      const text = event.results[0][0].transcript;
-      setSpeechAnswer(prev => prev + ' ' + text);
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+      if (finalTranscript) {
+        setSpeechAnswer(prev => {
+          const current = prev.trim();
+          const added = finalTranscript.trim();
+          if (!current) return added;
+          return current + ' ' + added;
+        });
+      }
     };
 
     rec.onerror = (e) => {
-      console.error(e);
-      setIsListening(false);
+      console.error('Speech recognition error:', e);
     };
 
     rec.onend = () => {
       setIsListening(false);
+      recognitionRef.current = null;
     };
 
+    recognitionRef.current = rec;
     rec.start();
   };
 
@@ -235,6 +282,14 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
     }
 
     window.speechSynthesis.cancel(); // Stop any pending speech
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.error('Failed to stop speech recognition on submit:', e);
+      }
+    }
+    setIsListening(false);
 
     const jobTitle = activeInterviewApp.jobTitle;
 
@@ -601,6 +656,12 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                         setIsInterviewing(false);
                         setActiveInterviewApp(null);
                         window.speechSynthesis.cancel();
+                        if (recognitionRef.current) {
+                          try {
+                            recognitionRef.current.stop();
+                          } catch (e) {}
+                        }
+                        setIsListening(false);
                       }}
                       className="w-full py-2 bg-rose-500/10 hover:bg-rose-500/15 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/20 hover:border-rose-500/35 transition-colors"
                     >
