@@ -342,8 +342,8 @@ app.post('/api/candidates/parse-resume', authenticateToken, authorizeRoles('Admi
 app.put('/api/candidates/:id/status', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, interviewDate, interviewTime } = req.body;
-    if (!['Applied', 'Screening', 'Interviewing', 'Rejected', 'Offered', 'Hired'].includes(status)) {
+    const { status, interviewDate, interviewTime, techInterviewDate, techInterviewTime } = req.body;
+    if (!['Applied', 'Screening', 'Interviewing', 'Shortlisted', 'Rejected', 'Offered', 'Hired'].includes(status)) {
       return res.status(400).json({ error: 'Invalid candidate status.' });
     }
 
@@ -356,6 +356,8 @@ app.put('/api/candidates/:id/status', authenticateToken, authorizeRoles('Admin',
     candidate.status = status;
     if (interviewDate !== undefined) candidate.interviewDate = interviewDate;
     if (interviewTime !== undefined) candidate.interviewTime = interviewTime;
+    if (techInterviewDate !== undefined) candidate.techInterviewDate = techInterviewDate;
+    if (techInterviewTime !== undefined) candidate.techInterviewTime = techInterviewTime;
     await candidate.save();
 
     res.json(candidate.toObject());
@@ -664,7 +666,7 @@ app.put('/api/candidates/:id/evaluation', authenticateToken, authorizeRoles('Adm
   }
 });
 
-app.put('/api/candidates/:id/interview-report', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
+app.put('/api/candidates/:id/interview-report', authenticateToken, authorizeRoles('Admin', 'HR Recruiter', 'Candidate'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, matchScore, interviewReport } = req.body;
@@ -703,7 +705,7 @@ app.post('/api/ai/screen', authenticateToken, authorizeRoles('Admin', 'HR Recrui
   }
 });
 
-app.post('/api/ai/interview/question', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
+app.post('/api/ai/interview/question', authenticateToken, authorizeRoles('Admin', 'HR Recruiter', 'Candidate'), async (req, res) => {
   try {
     const { jobTitle, currentRound, history } = req.body;
     if (!jobTitle || !currentRound || !history) {
@@ -717,7 +719,7 @@ app.post('/api/ai/interview/question', authenticateToken, authorizeRoles('Admin'
   }
 });
 
-app.post('/api/ai/interview/evaluate', authenticateToken, authorizeRoles('Admin', 'HR Recruiter'), async (req, res) => {
+app.post('/api/ai/interview/evaluate', authenticateToken, authorizeRoles('Admin', 'HR Recruiter', 'Candidate'), async (req, res) => {
   try {
     const { jobTitle, history } = req.body;
     if (!jobTitle || !history) {

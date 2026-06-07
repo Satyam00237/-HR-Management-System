@@ -47,12 +47,22 @@ export default function RecruiterDashboard({ activeSubTab, refreshKey, onTrigger
   // Sync date/time when candidate is loaded
   useEffect(() => {
     if (selectedVettingCand) {
-      setSchDate(selectedVettingCand.interviewDate || '');
-      setSchTime(selectedVettingCand.interviewTime || '');
+      if (selectedVettingCand.status === 'Shortlisted') {
+        setSchDate(selectedVettingCand.techInterviewDate || '');
+        setSchTime(selectedVettingCand.techInterviewTime || '');
+      } else {
+        setSchDate(selectedVettingCand.interviewDate || '');
+        setSchTime(selectedVettingCand.interviewTime || '');
+      }
       setIsShortlisting(selectedVettingCand.status === 'Interviewing');
     } else if (selectedScheduleCand) {
-      setSchDate(selectedScheduleCand.interviewDate || '');
-      setSchTime(selectedScheduleCand.interviewTime || '');
+      if (selectedScheduleCand.status === 'Shortlisted') {
+        setSchDate(selectedScheduleCand.techInterviewDate || '');
+        setSchTime(selectedScheduleCand.techInterviewTime || '');
+      } else {
+        setSchDate(selectedScheduleCand.interviewDate || '');
+        setSchTime(selectedScheduleCand.interviewTime || '');
+      }
     } else {
       setSchDate('');
       setSchTime('');
@@ -439,6 +449,7 @@ HR Generalist | FinTech Solutions (2023 - Present)
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Offered': return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20';
+      case 'Shortlisted': return 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20';
       case 'Interviewing': return 'bg-violet-500/15 text-violet-400 border-violet-500/20';
       case 'Screening': return 'bg-amber-500/15 text-amber-400 border-amber-500/20';
       case 'Rejected': return 'bg-rose-500/15 text-rose-400 border-rose-500/20';
@@ -541,7 +552,16 @@ HR Generalist | FinTech Solutions (2023 - Present)
                             className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-600 text-amber-400 hover:text-white border border-amber-500/20 hover:border-amber-500 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
                           >
                             <Clock className="w-3.5 h-3.5" />
-                            Interview Timing
+                            AI Interview Timing
+                          </button>
+                        )}
+                        {c.status === 'Shortlisted' && (
+                          <button
+                            onClick={() => setSelectedScheduleCand(c)}
+                            className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/20 hover:border-cyan-500 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            Schedule 1-to-1 Tech
                           </button>
                         )}
                       </td>
@@ -1032,248 +1052,7 @@ HR Generalist | FinTech Solutions (2023 - Present)
             )}
           </div>
         </div>
-      )}
-
-      {/* 4. AI Voice Interviewer Tab */}
-      {activeSubTab === 'interviews' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Setup / Detail Controls */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[450px]">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-semibold text-slate-300">Voice Interview Workspace</h4>
-                <Volume2 className="w-4 h-4 text-indigo-400" />
-              </div>
-
-              {!speechSupported && (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-400 rounded-xl mb-4 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold">Web Speech API Unrecognized:</span> Voice capabilities are unavailable in this browser. You can type candidate responses instead.
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Job Role Position</label>
-                  <select
-                    value={interviewJobId}
-                    onChange={(e) => setInterviewJobId(e.target.value)}
-                    disabled={isInterviewing}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
-                  >
-                    {jobs.map(j => (
-                      <option key={j.id} value={j.id}>{j.title}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Candidate Full Name</label>
-                  <input
-                    type="text"
-                    value={interviewName}
-                    onChange={(e) => setInterviewName(e.target.value)}
-                    disabled={isInterviewing}
-                    placeholder="Aditya Verma"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Candidate Email</label>
-                  <input
-                    type="email"
-                    value={interviewEmail}
-                    onChange={(e) => setInterviewEmail(e.target.value)}
-                    disabled={isInterviewing}
-                    placeholder="aditya.verma@outlook.com"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-800/80">
-              {isInterviewing ? (
-                <button
-                  onClick={() => {
-                    setIsInterviewing(false);
-                    window.speechSynthesis.cancel();
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold border border-rose-500 shadow-md transition-colors"
-                >
-                  Terminate Interview Session
-                </button>
-              ) : (
-                <button
-                  onClick={handleStartInterview}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all hover:scale-[1.01]"
-                >
-                  <Play className="w-4 h-4 text-white" />
-                  Initiate AI Voice Interviewer
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Active Voice Chat Portal */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl lg:col-span-2 flex flex-col justify-between min-h-[450px]">
-            {isInterviewing ? (
-              <div className="flex-1 flex flex-col justify-between">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-200">Active Live Round Session</h5>
-                    <p className="text-[10px] text-slate-500">Candidate: {interviewName}</p>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded">
-                    ROUND {interviewRound} OF 3
-                  </span>
-                </div>
-
-                {/* Speech Wave / Dialog Stream */}
-                <div className="flex-1 my-4 p-4 bg-slate-950/40 border border-slate-800 rounded-xl overflow-y-auto max-h-[220px] space-y-3.5 scrollbar-thin">
-                  {interviewHistory.map((h, idx) => (
-                    <div key={idx} className={`flex ${h.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] p-3 rounded-2xl text-[11px] leading-relaxed ${
-                        h.role === 'user'
-                          ? 'bg-indigo-600 text-white rounded-tr-none'
-                          : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/65'
-                      }`}>
-                        <span className="font-bold block mb-1 text-[9px] uppercase tracking-wide opacity-80">
-                          {h.role === 'user' ? interviewName : 'AI Interviewer'}
-                        </span>
-                        {h.content}
-                      </div>
-                    </div>
-                  ))}
-                  {evaluating && (
-                    <div className="flex justify-start">
-                      <div className="bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-700/50 flex items-center gap-2">
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                        <span className="text-[11px]">Evaluating answer...</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Soundwave Mic Button & Fallback Input */}
-                <div className="space-y-4 pt-3 border-t border-slate-800">
-                  <div className="flex items-center gap-3">
-                    {speechSupported && (
-                      <button
-                        onClick={toggleListening}
-                        disabled={evaluating}
-                        className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 shadow-lg border transition-all ${
-                          isListening 
-                            ? 'bg-rose-600 text-white border-rose-500 animate-pulse scale-[1.05]' 
-                            : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-800 hover:border-slate-750'
-                        }`}
-                        title={isListening ? "Listening... Click to pause" : "Click to speak answer"}
-                      >
-                        {isListening ? <Mic className="w-6 h-6 animate-pulse" /> : <MicOff className="w-6 h-6" />}
-                      </button>
-                    )}
-                    <div className="flex-1 relative">
-                      <input
-                        type="text"
-                        value={speechAnswer}
-                        onChange={(e) => setSpeechAnswer(e.target.value)}
-                        disabled={evaluating}
-                        placeholder={isListening ? "Listening to voice input..." : "Speak using mic or type candidate response here..."}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3 pr-10 py-3 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
-                      />
-                      <button
-                        onClick={handleNextRound}
-                        disabled={evaluating || !speechAnswer.trim()}
-                        className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-indigo-400 hover:text-indigo-300 disabled:opacity-30 transition-colors"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  {isListening && (
-                    <div className="flex items-center justify-center gap-1.5 text-[10px] text-rose-400 font-semibold animate-pulse">
-                      <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
-                      <span>Microphone Active: Transcribing your voice live...</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : interviewReport ? (
-              // Stunning Interview Report Card
-              <div className="space-y-4 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-200">AI Recruiter Evaluation Report</h4>
-                      <p className="text-[10px] text-slate-500">Candidate: {interviewName} ({interviewEmail})</p>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
-                      COMPLETED
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
-                    {/* Circle Score */}
-                    <div className="bg-slate-950/40 p-4 border border-slate-800/80 rounded-xl flex flex-col items-center justify-center text-center">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase">Interview Score</span>
-                      <h3 className="text-3xl font-extrabold text-indigo-400 mt-1">{interviewReport.score}%</h3>
-                      <span className="text-[9px] text-slate-500 font-semibold mt-1">Recommended Fit</span>
-                    </div>
-
-                    {/* Matrix Status */}
-                    <div className="bg-slate-950/40 p-4 border border-slate-800/80 rounded-xl space-y-1 md:col-span-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500 font-semibold">Technical Knowledge:</span>
-                        <span className="text-slate-200 font-bold">{interviewReport.technical}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500 font-semibold">Communication Skill:</span>
-                        <span className="text-slate-200 font-bold">{interviewReport.communication}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500 font-semibold">Confidence Indicator:</span>
-                        <span className="text-slate-200 font-bold">{interviewReport.confidence}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-950/40 p-4 border border-slate-800/80 rounded-xl text-xs space-y-2">
-                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">AI HR FEEDBACK SUMMARY</span>
-                    <p className="text-slate-300 leading-relaxed italic">"{interviewReport.feedback}"</p>
-                  </div>
-
-                  <div className="text-[11px] text-slate-400 leading-relaxed font-sans mt-3 whitespace-pre-line border-t border-slate-850 pt-3">
-                    {interviewReport.reportText}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-800 flex gap-3">
-                  <button
-                    onClick={() => {
-                      setInterviewReport(null);
-                      setInterviewName('');
-                      setInterviewEmail('');
-                    }}
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl border border-indigo-500 shadow-md transition-all hover:scale-[1.01]"
-                  >
-                    Return to Lobby
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-10 text-slate-500">
-                <Volume2 className="w-10 h-10 text-slate-750 mb-3" />
-                <h5 className="text-xs font-semibold text-slate-400">Interviewer Lobby Empty</h5>
-                <p className="text-[10px] text-slate-500 max-w-[280px] mt-1">Configure candidate details on the left panel, and initialize to open a microphone speech session.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        )}
 
       {/* 5. Candidate Review & Vetting Modal */}
       {selectedVettingCand && (
@@ -1647,10 +1426,15 @@ HR Generalist | FinTech Solutions (2023 - Present)
                     return;
                   }
                   try {
-                    await apiService.updateCandidateStatus(selectedScheduleCand.id, 'Interviewing', schDate, schTime);
+                    if (selectedScheduleCand.status === 'Shortlisted') {
+                      await apiService.updateCandidateStatus(selectedScheduleCand.id, 'Shortlisted', '', '', schDate, schTime);
+                      alert('1-to-1 Technical Interview scheduled successfully!');
+                    } else {
+                      await apiService.updateCandidateStatus(selectedScheduleCand.id, 'Interviewing', schDate, schTime);
+                      alert('AI Voice Interview scheduled successfully!');
+                    }
                     setSelectedScheduleCand(null);
                     onTriggerRefresh();
-                    alert('Interview scheduled successfully!');
                   } catch (e) {
                     alert('Failed to schedule interview.');
                   }

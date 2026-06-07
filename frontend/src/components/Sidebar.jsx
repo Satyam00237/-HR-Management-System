@@ -21,8 +21,7 @@ const navItems = {
   'HR Recruiter': [
     { id: 'overview', name: 'Recruiter Dashboard', icon: Briefcase },
     { id: 'jobs', name: 'Job Postings', icon: Search },
-    { id: 'screening', name: 'AI Resume Screening', icon: Sparkles, badge: 'AI' },
-    { id: 'interviews', name: 'Candidate Interviews', icon: Sparkles, badge: 'Voice' }
+    { id: 'screening', name: 'AI Resume Screening', icon: Sparkles, badge: 'AI' }
   ],
   Employee: [
     { id: 'portal', name: 'Attendance Portal', icon: Clock },

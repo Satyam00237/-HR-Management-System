@@ -369,10 +369,12 @@ export const apiService = {
     return handleResponse(res);
   },
 
-  async updateCandidateStatus(candidateId, status, interviewDate = '', interviewTime = '') {
+  async updateCandidateStatus(candidateId, status, interviewDate = '', interviewTime = '', techInterviewDate = '', techInterviewTime = '') {
     const payload = { status };
     if (interviewDate) payload.interviewDate = interviewDate;
     if (interviewTime) payload.interviewTime = interviewTime;
+    if (techInterviewDate) payload.techInterviewDate = techInterviewDate;
+    if (techInterviewTime) payload.techInterviewTime = techInterviewTime;
     const res = await fetch(`${API_BASE}/candidates/${candidateId}/status`, {
       method: 'PUT',
       headers: getAuthHeaders('application/json'),

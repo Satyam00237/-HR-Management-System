@@ -3,13 +3,25 @@ import {
   Briefcase, FileText, CheckCircle, Clock, 
   User, Lock, Mail, Upload, Sparkles, LogOut, 
   MapPin, Calendar, ArrowLeft, Send, AlertCircle, Search, Building, ChevronRight,
-  Heart, Cpu, Globe, Award, Shield, Check, Bell
+  Heart, Cpu, Globe, Award, Shield, Check, Bell,
+  Play, Volume2, Mic, MicOff, RefreshCw, MessageSquare
 } from 'lucide-react';
 import { apiService } from '../api/apiService';
 
 export default function CareersPortal({ onClose, onLoginSuccess, currentUser, onLogout }) {
   // Navigation tabs for logged-in candidates
   const [activeTab, setActiveTab] = useState('jobs'); // 'jobs', 'applications', 'profile'
+
+  // Voice Interview States
+  const [activeInterviewApp, setActiveInterviewApp] = useState(null);
+  const [isInterviewing, setIsInterviewing] = useState(false);
+  const [interviewRound, setInterviewRound] = useState(1); // 1, 2, 3
+  const [interviewHistory, setInterviewHistory] = useState([]); // [{role: 'assistant'|'user', content: string}]
+  const [isListening, setIsListening] = useState(false);
+  const [speechAnswer, setSpeechAnswer] = useState('');
+  const [evaluating, setEvaluating] = useState(false);
+  const [interviewReport, setInterviewReport] = useState(null);
+  const [speechSupported, setSpeechSupported] = useState(false);
   
   // Auth Modal States (Login / Registration)
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -100,6 +112,151 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
       return () => clearInterval(interval);
     }
   }, [currentUser]);
+
+  // Speech Recognition Check
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setSpeechSupported(!!SpeechRecognition);
+  }, []);
+
+  // Text-To-Speech (AI Speaking)
+  const speakQuestion = (text) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  // Start Voice Interview Flow
+  const handleStartInterview = async (app) => {
+    setActiveInterviewApp(app);
+    setIsInterviewing(true);
+    setInterviewRound(1);
+    setInterviewReport(null);
+    setSpeechAnswer('');
+    
+    const welcomeText = `Hello ${currentUser.name}, thank you for joining the interview for the ${app.jobTitle} position today. Let's begin.`;
+    
+    setEvaluating(true);
+    try {
+      const initialQuestion = await apiService.getNextInterviewQuestion(app.jobTitle, 1, []);
+      
+      setInterviewHistory([
+        { role: 'assistant', content: initialQuestion }
+      ]);
+      
+      const combinedSpeech = `${welcomeText} ${initialQuestion}`;
+      speakQuestion(combinedSpeech);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to start interview.');
+      setIsInterviewing(false);
+      setActiveInterviewApp(null);
+    } finally {
+      setEvaluating(false);
+    }
+  };
+
+  // Start Voice Speech Recognition
+  const toggleListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const rec = new SpeechRecognition();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = 'en-US';
+
+    rec.onstart = () => {
+      setIsListening(true);
+    };
+
+    rec.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      setSpeechAnswer(prev => prev + ' ' + text);
+    };
+
+    rec.onerror = (e) => {
+      console.error(e);
+      setIsListening(false);
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+    };
+
+    rec.start();
+  };
+
+  // Submit Answer
+  const handleNextRound = async () => {
+    if (!speechAnswer.trim()) {
+      alert('Please voice or type your answer before submitting.');
+      return;
+    }
+
+    window.speechSynthesis.cancel(); // Stop any pending speech
+
+    const jobTitle = activeInterviewApp.jobTitle;
+
+    // Save answer to history
+    const updatedHistory = [...interviewHistory, { role: 'user', content: speechAnswer }];
+    setInterviewHistory(updatedHistory);
+    setSpeechAnswer('');
+
+    if (interviewRound < 3) {
+      const nextRoundNum = interviewRound + 1;
+      setInterviewRound(nextRoundNum);
+      
+      setEvaluating(true);
+      try {
+        const nextQ = await apiService.getNextInterviewQuestion(jobTitle, nextRoundNum, updatedHistory);
+        setInterviewHistory(prev => [...prev, { role: 'assistant', content: nextQ }]);
+        speakQuestion(nextQ);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setEvaluating(false);
+      }
+    } else {
+      // Interview complete! Evaluate.
+      setEvaluating(true);
+      try {
+        const report = await apiService.evaluateInterview(jobTitle, updatedHistory);
+        
+        // Auto-shortlist threshold: 75+
+        const passed = report.score >= 75;
+        const status = passed ? 'Shortlisted' : 'Rejected';
+        
+        await apiService.saveInterviewReport(activeInterviewApp.id, status, report.score, report);
+
+        setInterviewReport(report);
+        setIsInterviewing(false);
+        loadApplications();
+        
+        if (passed) {
+          speakQuestion(`Congratulations! You are shortlisted for the one-to-one technical interview. Date and time will be notified later.`);
+        } else {
+          speakQuestion("Thank you. The interview is now complete. We have generated your performance report.");
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Evaluation failed.');
+        setIsInterviewing(false);
+        setActiveInterviewApp(null);
+      } finally {
+        setEvaluating(false);
+      }
+    }
+  };
 
   const loadProfileData = async () => {
     try {
@@ -267,17 +424,196 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
     return applications.some(app => app.jobId === jobId);
   };
 
-  const notifications = applications.filter(app => ['Interviewing', 'Rejected', 'Offered'].includes(app.status));
+  const notifications = applications.filter(app => ['Interviewing', 'Shortlisted', 'Rejected', 'Offered'].includes(app.status));
 
   const getStatusStyle = (status) => {
     switch (status) {
       case 'Offered': return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20';
+      case 'Shortlisted': return 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20';
       case 'Interviewing': return 'bg-violet-500/15 text-violet-400 border-violet-500/20';
       case 'Screening': return 'bg-amber-500/15 text-amber-400 border-amber-500/20';
       case 'Rejected': return 'bg-rose-500/15 text-rose-400 border-rose-500/20';
       default: return 'bg-slate-800 text-slate-400 border-slate-700';
     }
   };
+
+  if (activeInterviewApp) {
+    return (
+      <div className="min-h-screen w-full bg-slate-950 text-slate-100 font-sans flex items-center justify-center p-4">
+        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-3xl p-6 max-w-2xl w-full min-h-[500px] flex flex-col justify-between shadow-2xl relative animate-fade-in">
+          
+          {isInterviewing ? (
+            <div className="flex-1 flex flex-col justify-between">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <h5 className="text-sm font-bold text-slate-200">AI Voice Interview Round</h5>
+                  <p className="text-xs text-indigo-400 font-semibold">{activeInterviewApp.jobTitle}</p>
+                </div>
+                <span className="text-[10px] font-bold px-2.5 py-0.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-md">
+                  ROUND {interviewRound} OF 3
+                </span>
+              </div>
+
+              {/* Chat Stream */}
+              <div className="flex-1 my-4 p-4 bg-slate-950/40 border border-slate-850 rounded-2xl overflow-y-auto max-h-[260px] space-y-3.5 scrollbar-thin">
+                {interviewHistory.map((h, idx) => (
+                  <div key={idx} className={`flex ${h.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
+                      h.role === 'user'
+                        ? 'bg-indigo-600 text-white rounded-tr-none shadow-md shadow-indigo-600/10'
+                        : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/65'
+                    }`}>
+                      <span className="font-bold block mb-1 text-[9px] uppercase tracking-wide opacity-80">
+                        {h.role === 'user' ? currentUser.name : 'AI Interviewer'}
+                      </span>
+                      {h.content}
+                    </div>
+                  </div>
+                ))}
+                {evaluating && (
+                  <div className="flex justify-start">
+                    <div className="bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-700/50 flex items-center gap-2">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                      <span className="text-xs">Evaluating answer...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Soundwave Mic Button & Fallback Input */}
+              <div className="space-y-4 pt-3 border-t border-slate-800">
+                <div className="flex items-center gap-3">
+                  {speechSupported && (
+                    <button
+                      onClick={toggleListening}
+                      disabled={evaluating}
+                      className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 shadow-lg border transition-all ${
+                        isListening 
+                          ? 'bg-rose-600 text-white border-rose-500 animate-pulse scale-[1.05]' 
+                          : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-850 hover:border-slate-750'
+                      }`}
+                      title={isListening ? "Listening... Click to pause" : "Click to speak answer"}
+                    >
+                      {isListening ? <Mic className="w-6 h-6 animate-pulse" /> : <MicOff className="w-6 h-6" />}
+                    </button>
+                  )}
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={speechAnswer}
+                      onChange={(e) => setSpeechAnswer(e.target.value)}
+                      disabled={evaluating}
+                      placeholder={isListening ? "Listening to voice input..." : "Speak using mic or type response..."}
+                      className="w-full bg-slate-950 border border-slate-850 rounded-xl pl-4 pr-10 py-3.5 text-xs text-slate-100 placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
+                    />
+                    <button
+                      onClick={handleNextRound}
+                      disabled={evaluating || !speechAnswer.trim()}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-indigo-400 hover:text-indigo-300 disabled:opacity-30 transition-colors cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                {isListening && (
+                  <div className="flex items-center justify-center gap-1.5 text-[10px] text-rose-455 font-semibold animate-pulse">
+                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
+                    <span>Microphone Active: Transcribing your voice live...</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    setIsInterviewing(false);
+                    setActiveInterviewApp(null);
+                    window.speechSynthesis.cancel();
+                  }}
+                  className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/15 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/20 hover:border-rose-500/35 transition-colors"
+                >
+                  Terminate Interview Session
+                </button>
+              </div>
+            </div>
+          ) : interviewReport ? (
+            <div className="space-y-5 flex-1 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3.5">
+                  <div>
+                    <h4 className="text-base font-bold text-slate-200">AI Recruiter Evaluation Report</h4>
+                    <p className="text-xs text-indigo-400 font-semibold">{activeInterviewApp.jobTitle}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                    interviewReport.score >= 75 
+                      ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20' 
+                      : 'bg-rose-500/15 text-rose-400 border-rose-500/20'
+                  }`}>
+                    {interviewReport.score >= 75 ? 'SHORTLISTED' : 'COMPLETED'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
+                  <div className="bg-slate-950/40 p-4 border border-slate-850 rounded-2xl flex flex-col items-center justify-center text-center">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Interview Score</span>
+                    <h3 className="text-3xl font-extrabold text-indigo-400 mt-1">{interviewReport.score}%</h3>
+                    <span className="text-[9px] text-slate-500 font-semibold mt-1">AI Recommendation</span>
+                  </div>
+
+                  <div className="bg-slate-950/40 p-4 border border-slate-850 rounded-2xl space-y-1.5 md:col-span-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-semibold">Technical Knowledge:</span>
+                      <span className="text-slate-200 font-bold">{interviewReport.technical}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-semibold">Communication Skill:</span>
+                      <span className="text-slate-200 font-bold">{interviewReport.communication}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-semibold">Confidence Indicator:</span>
+                      <span className="text-slate-200 font-bold">{interviewReport.confidence}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {interviewReport.score >= 75 ? (
+                  <div className="bg-cyan-950/10 border border-cyan-550/30 p-4 rounded-2xl space-y-1.5">
+                    <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Award className="w-4 h-4 animate-bounce" />
+                      Congratulations! You are shortlisted!
+                    </span>
+                    <p className="text-slate-350 leading-relaxed text-xs">
+                      Congratulations! You are shortlisted for the one-to-one technical interview. Date and time will be notified later.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-slate-950/40 p-4 border border-slate-855 rounded-2xl text-xs space-y-2">
+                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">AI Recruiter Feedback</span>
+                    <p className="text-slate-300 leading-relaxed italic">"{interviewReport.feedback}"</p>
+                  </div>
+                )}
+
+                <div className="text-xs text-slate-400 leading-relaxed mt-4 whitespace-pre-line border-t border-slate-850 pt-3 max-h-[160px] overflow-y-auto">
+                  {interviewReport.reportText}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-800 flex gap-3">
+                <button
+                  onClick={() => {
+                    setInterviewReport(null);
+                    setActiveInterviewApp(null);
+                  }}
+                  className="w-full py-3 bg-indigo-650 hover:bg-indigo-550 text-white text-xs font-bold rounded-xl shadow-md transition-colors"
+                >
+                  Return to My Applications
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100 font-sans overflow-y-auto">
@@ -396,6 +732,18 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                                       </p>
                                     ) : (
                                       <p className="text-slate-500 italic text-[10px] mt-0.5">Interview schedule pending</p>
+                                    )}
+                                  </div>
+                                )}
+                                {app.status === 'Shortlisted' && (
+                                  <div>
+                                    <p className="text-cyan-400 font-semibold mt-0.5">🏆 Shortlisted for 1-to-1 Technical Interview!</p>
+                                    {app.techInterviewDate ? (
+                                      <p className="text-slate-400 text-[10px] mt-0.5">
+                                        Date: {app.techInterviewDate} at {app.techInterviewTime}
+                                      </p>
+                                    ) : (
+                                      <p className="text-slate-500 italic text-[10px] mt-0.5">Date & time will be notified later</p>
                                     )}
                                   </div>
                                 )}
@@ -666,20 +1014,66 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                           <span className="flex items-center gap-1"><FileText className="w-4 h-4" /> {app.resumeFileName}</span>
                         )}
                       </div>
-                      
-                      {/* Selection / Interview Schedule / Rejection details */}
+                             {/* Selection / Interview Schedule / Rejection details */}
                       {app.status === 'Interviewing' && (
-                        <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs space-y-1 max-w-md">
+                        <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs space-y-3 max-w-md animate-fade-in">
                           <p className="text-indigo-400 font-bold flex items-center gap-1">
                             <CheckCircle className="w-3.5 h-3.5" />
-                            Selected/Shortlisted for Interview
+                            Shortlisted for AI Voice Interview
                           </p>
                           {app.interviewDate ? (
-                            <p className="text-slate-300">
-                              Date: <span className="font-bold text-slate-200">{app.interviewDate}</span> at <span className="font-bold text-slate-200">{app.interviewTime}</span>
-                            </p>
+                            <div className="space-y-2">
+                              <p className="text-slate-350">
+                                Date: <span className="font-bold text-slate-200">{app.interviewDate}</span> at <span className="font-bold text-slate-200">{app.interviewTime}</span>
+                              </p>
+                              {(() => {
+                                const now = new Date();
+                                const scheduledDateTime = new Date(`${app.interviewDate}T${app.interviewTime}`);
+                                const isLocked = isNaN(scheduledDateTime.getTime()) ? true : now < scheduledDateTime;
+
+                                if (isLocked) {
+                                  return (
+                                    <div className="flex items-center gap-2 p-2 bg-slate-950/60 rounded-lg text-slate-500 text-[11px] font-semibold border border-slate-900">
+                                      <Clock className="w-3.5 h-3.5 shrink-0" />
+                                      <span>Locked until scheduled date and time</span>
+                                    </div>
+                                  );
+                                } else {
+                                  return (
+                                    <button
+                                      onClick={() => handleStartInterview(app)}
+                                      className="w-full flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-550 hover:to-violet-550 text-white rounded-xl text-xs font-bold shadow-md transition-all hover:scale-[1.01]"
+                                    >
+                                      <Play className="w-3.5 h-3.5" />
+                                      Start AI Voice Interview
+                                    </button>
+                                  );
+                                }
+                              })()}
+                            </div>
                           ) : (
-                            <p className="text-slate-450 italic">Interview timing will be scheduled shortly.</p>
+                            <p className="text-slate-455 italic">Interview timing will be scheduled shortly by HR.</p>
+                          )}
+                        </div>
+                      )}
+                      {app.status === 'Shortlisted' && (
+                        <div className="mt-2 p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-xs space-y-2.5 max-w-md shadow-lg shadow-cyan-950/20">
+                          <p className="text-cyan-400 font-extrabold flex items-center gap-1.5 text-sm">
+                            <Award className="w-4 h-4 text-cyan-400 animate-pulse" />
+                            Shortlisted for 1-to-1 Interview!
+                          </p>
+                          {app.techInterviewDate ? (
+                            <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-900 space-y-1">
+                              <p className="text-slate-400 font-semibold uppercase text-[9px] tracking-wider">Scheduled Technical Round</p>
+                              <p className="text-slate-200 font-bold text-xs">
+                                Date: {app.techInterviewDate} at {app.techInterviewTime}
+                              </p>
+                              <p className="text-indigo-400 text-[10px] font-medium mt-1">Please be ready at the scheduled time. A recruiter will contact you.</p>
+                            </div>
+                          ) : (
+                            <p className="text-slate-350 leading-relaxed font-semibold">
+                              Congratulations! You are shortlisted for the one-to-one technical interview. Date and time will be notified later.
+                            </p>
                           )}
                         </div>
                       )}

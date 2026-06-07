@@ -15,7 +15,7 @@ import { apiService } from './api/apiService';
 const allowedTabsByRole = {
   Admin: ['overview', 'employees', 'payroll', 'policies', 'recruitment', 'reports'],
   'Senior Manager': ['overview', 'team', 'leaves'],
-  'HR Recruiter': ['overview', 'jobs', 'screening', 'interviews'],
+  'HR Recruiter': ['overview', 'jobs', 'screening'],
   Employee: ['portal', 'profile', 'leaves', 'payslips', 'performance']
 };
 
