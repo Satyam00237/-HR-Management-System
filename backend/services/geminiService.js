@@ -602,7 +602,7 @@ export const geminiService = {
   },
 
   /**
-   * AI HR Assistant Q&A Chatbot
+   * AI HR Assistant Q&A Chatbot (Context & Role Sensitive)
    */
   async askHRAssistant(question, context) {
     const genAI = getGeminiClient();
@@ -613,14 +613,42 @@ export const geminiService = {
     }
 
     try {
+      let rolePrompt = '';
+      const role = context.role || 'Guest';
+
+      if (role === 'Admin') {
+        rolePrompt = `You are a SmartHR Operations Assistant advising an Admin.
+        Help them analyze organization stats, manage system settings, and optimize operational workflows.
+        Context: Average employee performance scorecard is 85%. Departments are: Engineering, Sales, HR, Marketing, Operations.
+        Keep answers operational, direct, and system-focused.`;
+      } else if (role === 'Senior Manager') {
+        rolePrompt = `You are a SmartHR Management Coach advising a Senior Manager.
+        Help them manage team leaves, coaching issues, team attendance, and leadership metrics.
+        Keep answers focused on people management, leadership best practices, and team wellness.`;
+      } else if (role === 'HR Recruiter') {
+        rolePrompt = `You are a SmartHR Recruiting Copilot advising an HR Recruiter.
+        Help them with active recruitment metrics, screening advice, job postings structure, and ATS scoring mechanism (ATS uses 60% skills, 20% experience, 10% education, 10% projects weights).
+        Keep answers talent acquisition-focused, speedy, and metric-driven.`;
+      } else if (role === 'Employee') {
+        rolePrompt = `You are a SmartHR Employee Guide advising an employee.
+        Help them navigate leaves balance, salary details, attendance check-in status, and office policies.
+        Context: Remaining leaves: ${JSON.stringify(context.leaveBalance)}, Base Salary: $${context.salary || 'N/A'}, Attendance check-ins this month: ${context.attendanceStats?.checkInCount || 0}.
+        Keep answers warm, personalized, and supportive.`;
+      } else {
+        rolePrompt = `You are a SmartHR Career Guide advising a job seeker / candidate.
+        Help them learn about open positions, company perks (remote-first, global learning stipends, health coverage), and preparing for the AI voice/video interview (uses SpeechRecognition and local video feed confidence processing, threshold is 75+ for shortlisting).
+        Keep answers encouraging, structured, and recruitment-oriented.`;
+      }
+
       const prompt = `
-        You are a friendly, helpful HR assistant chatbot named "SmartHR Assistant" at our company.
-        The currently logged-in employee has this profile context:
+        ${rolePrompt}
+        
+        Currently logged-in user profile context:
         ${JSON.stringify(context)}
         
         Answer their question: "${question}"
         
-        Be precise, professional, and friendly. Limit your response to 3 sentences maximum. Use the employee context data (like remaining leaves, salary, check-in history) to make your response highly personalized. If they ask about policies not in context, refer them to the official policy documents or their manager.
+        Be precise, professional, and helpful. Limit your response to 3-4 sentences maximum. Use the context details when relevant to personalize the response.
       `;
 
       const result = await generateWithModelFallback(genAI, prompt);
@@ -634,9 +662,80 @@ export const geminiService = {
 
   mockHRAssistant(question, context) {
     const q = question.toLowerCase();
-    const name = context.name || 'Employee';
-    const leaves = context.leaveBalance || { casual: 0, medical: 0, earned: 0 };
-    const salary = context.salary || 0;
+    const name = context.name || 'User';
+    const role = context.role || 'Guest';
+
+    // 1. Candidate / Job Seeker mock replies
+    if (role === 'Candidate' || role === 'Guest') {
+      if (q.includes('job') || q.includes('open') || q.includes('vacancy') || q.includes('position')) {
+        return `Hi ${name}, we currently have exciting vacancies for Software Engineers, React Developers, DevOps Engineers, and Product Managers. You can browse, read job descriptions, and apply directly under the 'Explore Jobs' tab!`;
+      }
+      if (q.includes('interview') || q.includes('prepare') || q.includes('process') || q.includes('video')) {
+        return `Our hiring process involves a resume suitability check, an AI Video/Voice interview in your portal, and a final 1-to-1 interview. To prepare for the AI interview, ensure a quiet background, review concepts matching your resume, and speak clearly into your mic.`;
+      }
+      if (q.includes('benefit') || q.includes('perk') || q.includes('culture') || q.includes('wfh')) {
+        return `We are a remote-first company with global workspaces, learning stipends, comprehensive health coverage, and quarterly team retreats. We value design quality, high execution speed, and absolute ownership.`;
+      }
+      if (q.includes('status') || q.includes('application')) {
+        return `You can monitor the live progress of your job applications under the 'My Applications' tab. It will update as your status changes from Screening to Interviewing, Shortlisted, or Offered.`;
+      }
+      return `Hello ${name}! I'm your SmartHR Career Assistant. I can help you find open roles, track application statuses, check benefits, or give you tips on passing our AI voice interview. How can I help you today?`;
+    }
+
+    // 2. Admin mock replies
+    if (role === 'Admin') {
+      if (q.includes('count') || q.includes('employee') || q.includes('department') || q.includes('people')) {
+        return `We have 5 departments: Engineering (45%), Sales (20%), Operations (15%), Marketing (10%), and HR (10%). Active head count is 142 employees with an average performance rating of 85%.`;
+      }
+      if (q.includes('key') || q.includes('gemini') || q.includes('api') || q.includes('settings')) {
+        return `The server-side Gemini API key configuration is active. Admins can update or rotate keys at any time via the 'API Key Settings' gear icon in the top header bar.`;
+      }
+      if (q.includes('performance') || q.includes('rating') || q.includes('average')) {
+        return `The current organization-wide average performance rating is 85%. High performers are concentrated in the Engineering and Sales divisions. Individual scorecards can be reviewed in the Admin Reports dashboard.`;
+      }
+      if (q.includes('report') || q.includes('generate')) {
+        return `You can generate complete system logs, payroll summaries, or policy usage charts directly in the Admin Dashboard under 'Reports'. Data can be exported as CSV/PDF.`;
+      }
+      return `Hello Admin ${name}! I am your SmartHR Operations Assistant. I can provide organizational metrics, check database/API settings status, or help analyze department ratings. How can I help you today?`;
+    }
+
+    // 3. Senior Manager mock replies
+    if (role === 'Senior Manager') {
+      if (q.includes('leave') || q.includes('team') || q.includes('request')) {
+        return `As a Senior Manager, you can review and approve team leave requests under the 'Leaves' sub-tab. There are currently 2 pending leaves awaiting your decision.`;
+      }
+      if (q.includes('attendance') || q.includes('hours') || q.includes('time')) {
+        return `Your direct reports have maintained a 96% on-time attendance rate this week. You can see check-in summaries, late check-ins, and weekly hours worked in your 'Team' dashboard view.`;
+      }
+      if (q.includes('coaching') || q.includes('tip') || q.includes('leadership') || q.includes('conflict')) {
+        return `For professional coaching: Encourage one-to-ones weekly, set clear SMART goals for quarterly metrics, and resolve conflicts by focusing on processes rather than personalities. Use our standard templates in the Manager Hub.`;
+      }
+      if (q.includes('performance') || q.includes('team stats')) {
+        return `Your team's average performance score is 87%. Engineering leads have the highest scores, while marketing coordinates are on track. You can set new metrics in the Performance tracker.`;
+      }
+      return `Hello Manager ${name}! I am your SmartHR Leadership Coach. I can help you review team leaves, check attendance logs, or provide operational management advice. How can I help you today?`;
+    }
+
+    // 4. HR Recruiter mock replies
+    if (role === 'HR Recruiter') {
+      if (q.includes('job') || q.includes('active') || q.includes('post')) {
+        return `You can manage, edit, or create jobs under the 'Manage Jobs' tab. Currently, there are 5 active job postings online receiving candidate applications.`;
+      }
+      if (q.includes('ats') || q.includes('match') || q.includes('score')) {
+        return `Our ATS matches resumes based on a weighted algorithm: 60% skills compatibility, 20% experience matching, 10% educational credentials, and 10% project relevance. Candidates scoring 75+ in AI Voice Interviews are automatically shortlisted for technical rounds.`;
+      }
+      if (q.includes('screen') || q.includes('candidate') || q.includes('resume')) {
+        return `You can view candidate applications and trigger instant AI Resume Screening in the 'Screening' tab. The panel displays match percentage, strengths/weaknesses, and suitability recommendations.`;
+      }
+      if (q.includes('schedule') || q.includes('interview')) {
+        return `Recruiters have scheduling access to assign AI dates and follow-up 1-to-1 Technical Interviews. Shortlisted candidates will view their scheduled times directly in their applicant portal.`;
+      }
+      return `Hello Recruiter ${name}! I am your SmartHR Recruiting Copilot. I can help screen candidate details, explain the ATS scoring setup, or view job stats. What can I do for you today?`;
+    }
+
+    // 5. Employee mock replies (Default/Fallback)
+    const leaves = context.leaveBalance || { casual: 12, medical: 10, earned: 18 };
+    const salary = context.salary || 5000;
     const checkInCount = context.attendanceStats ? context.attendanceStats.checkInCount : 0;
 
     if (q.includes('leave') || q.includes('balance') || q.includes('vacation')) {
@@ -648,14 +747,14 @@ export const geminiService = {
     }
 
     if (q.includes('attendance') || q.includes('check') || q.includes('hours')) {
-      return `Hi ${name}, you have checked in ${checkInCount} times this month with an average on-time rate of ${context.attendanceStats?.onTimeRate || 95}%. Make sure to check in daily before 09:15 AM to avoid being marked late!`;
+      return `Hi ${name}, you have checked in ${checkInCount} times this month. Make sure to check in daily before 09:15 AM to avoid being marked late!`;
     }
 
     if (q.includes('wfh') || q.includes('policy') || q.includes('home')) {
       return `According to our policy, you are permitted to work from home up to 2 days per week, coordinating with your manager (${context.manager || 'Rajesh Kumar'}). Core collaboration hours are 11:00 AM to 04:00 PM.`;
     }
 
-    return `Hello ${name}! I'm your SmartHR Assistant. I can help you check your leave balance, view salary details, check-in records, or answer questions about company policies. How can I help you today?`;
+    return `Hello ${name}! I'm your SmartHR Employee Guide. I can check your leaves balance, view salary details, check attendance, or answer company policy questions. How can I help you today?`;
   },
 
   // Main matching function with Gemini AI integration

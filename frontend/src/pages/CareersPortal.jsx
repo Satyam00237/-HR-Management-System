@@ -7,6 +7,7 @@ import {
   Play, Volume2, Mic, MicOff, RefreshCw, MessageSquare
 } from 'lucide-react';
 import { apiService } from '../api/apiService';
+import HRAssistant from '../components/HRAssistant';
 
 export default function CareersPortal({ onClose, onLoginSuccess, currentUser, onLogout }) {
   // Navigation tabs for logged-in candidates
@@ -1663,6 +1664,7 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
         </div>
       )}
 
+      <HRAssistant currentEmployee={currentUser} />
     </div>
   );
 }
