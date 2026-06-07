@@ -16,7 +16,7 @@ const allowedTabsByRole = {
   Admin: ['overview', 'employees', 'payroll', 'policies', 'recruitment', 'reports'],
   'Senior Manager': ['overview', 'team', 'leaves'],
   'HR Recruiter': ['overview', 'jobs', 'screening', 'interviews'],
-  Employee: ['portal', 'leaves', 'payslips', 'performance']
+  Employee: ['portal', 'profile', 'leaves', 'payslips', 'performance']
 };
 
 export default function App() {

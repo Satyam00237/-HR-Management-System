@@ -87,19 +87,29 @@ export const apiService = {
   },
 
   async checkIn(employeeId) {
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const localDate = new Date(now.getTime() - (offset * 60 * 1000)).toISOString().split('T')[0];
+    const localTime = now.toTimeString().split(' ')[0];
+
     const res = await fetch(`${API_BASE}/attendance/check-in`, {
       method: 'POST',
       headers: getAuthHeaders('application/json'),
-      body: JSON.stringify({ employeeId })
+      body: JSON.stringify({ employeeId, localDate, localTime })
     });
     return handleResponse(res);
   },
 
   async checkOut(employeeId) {
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const localDate = new Date(now.getTime() - (offset * 60 * 1000)).toISOString().split('T')[0];
+    const localTime = now.toTimeString().split(' ')[0];
+
     const res = await fetch(`${API_BASE}/attendance/check-out`, {
       method: 'POST',
       headers: getAuthHeaders('application/json'),
-      body: JSON.stringify({ employeeId })
+      body: JSON.stringify({ employeeId, localDate, localTime })
     });
     return handleResponse(res);
   },
@@ -373,6 +383,15 @@ export const apiService = {
 
   async updateEmployee(id, empData) {
     const res = await fetch(`${API_BASE}/employees/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders('application/json'),
+      body: JSON.stringify(empData)
+    });
+    return handleResponse(res);
+  },
+
+  async updateEmployeeProfile(empData) {
+    const res = await fetch(`${API_BASE}/employees/me/profile`, {
       method: 'PUT',
       headers: getAuthHeaders('application/json'),
       body: JSON.stringify(empData)

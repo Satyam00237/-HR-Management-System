@@ -172,18 +172,19 @@ export const db = {
     return await Attendance.find().sort({ date: -1, checkInTime: -1 }).lean();
   },
 
-  async checkIn(employeeId) {
-    const today = new Date().toISOString().split('T')[0];
+  async checkIn(employeeId, localDate, localTime) {
+    const today = localDate || new Date().toISOString().split('T')[0];
     
     // Check if already checked in today
     const exists = await Attendance.findOne({ employeeId, date: today });
     if (exists) return exists.toObject();
 
-    const time = new Date().toTimeString().split(' ')[0];
+    const time = localTime || new Date().toTimeString().split(' ')[0];
     const checkInHour = parseInt(time.split(':')[0]);
+    const checkInMinute = parseInt(time.split(':')[1]);
     
-    // 09:00 AM limit for On Time
-    const status = checkInHour < 9 || (checkInHour === 9 && parseInt(time.split(':')[1]) <= 15) ? 'On Time' : 'Late';
+    // 09:15 AM limit for On Time
+    const status = checkInHour < 9 || (checkInHour === 9 && checkInMinute <= 15) ? 'On Time' : 'Late';
     
     const newEntry = new Attendance({
       id: `ATT${Date.now()}`,
@@ -212,13 +213,13 @@ export const db = {
     return newEntry.toObject();
   },
 
-  async checkOut(employeeId) {
-    const today = new Date().toISOString().split('T')[0];
+  async checkOut(employeeId, localDate, localTime) {
+    const today = localDate || new Date().toISOString().split('T')[0];
     const entry = await Attendance.findOne({ employeeId, date: today, checkOutTime: null });
     
     if (!entry) return null;
 
-    const time = new Date().toTimeString().split(' ')[0];
+    const time = localTime || new Date().toTimeString().split(' ')[0];
     entry.checkOutTime = time;
 
     // Calculate hours worked
@@ -471,6 +472,20 @@ export const db = {
       if (data.designation !== undefined) emp.designation = data.designation;
       if (data.salary !== undefined) emp.salary = parseFloat(data.salary);
       if (data.status !== undefined) emp.status = data.status;
+      if (data.avatar !== undefined) emp.avatar = data.avatar;
+      await emp.save();
+      return emp.toObject();
+    }
+    return null;
+  },
+
+  async updateEmployeeProfile(id, data) {
+    const emp = await Employee.findOne({ id });
+    if (emp) {
+      if (data.name !== undefined) emp.name = data.name;
+      if (data.email !== undefined) emp.email = data.email;
+      if (data.password !== undefined) emp.password = data.password;
+      if (data.avatar !== undefined) emp.avatar = data.avatar;
       await emp.save();
       return emp.toObject();
     }

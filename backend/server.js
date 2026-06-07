@@ -482,7 +482,7 @@ app.get('/api/attendance', authenticateToken, async (req, res) => {
 
 app.post('/api/attendance/check-in', authenticateToken, async (req, res) => {
   try {
-    const { employeeId } = req.body;
+    const { employeeId, localDate, localTime } = req.body;
     if (!employeeId) return res.status(400).json({ error: 'Missing employeeId' });
 
     // Secure Check-In restriction: employees can only check in for themselves
@@ -490,7 +490,7 @@ app.post('/api/attendance/check-in', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. You cannot check in for another employee.' });
     }
 
-    const entry = await db.checkIn(employeeId);
+    const entry = await db.checkIn(employeeId, localDate, localTime);
     res.json(entry);
   } catch (e) {
     res.status(500).json({ error: 'Check-in failed' });
@@ -499,7 +499,7 @@ app.post('/api/attendance/check-in', authenticateToken, async (req, res) => {
 
 app.post('/api/attendance/check-out', authenticateToken, async (req, res) => {
   try {
-    const { employeeId } = req.body;
+    const { employeeId, localDate, localTime } = req.body;
     if (!employeeId) return res.status(400).json({ error: 'Missing employeeId' });
 
     // Secure Check-Out restriction: employees can only check out for themselves
@@ -507,7 +507,7 @@ app.post('/api/attendance/check-out', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. You cannot check out for another employee.' });
     }
 
-    const entry = await db.checkOut(employeeId);
+    const entry = await db.checkOut(employeeId, localDate, localTime);
     if (entry) {
       res.json(entry);
     } else {
@@ -741,6 +741,19 @@ app.post('/api/ai/chatbot', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'AI HR Chatbot assistant query failed' });
   }
 });
+app.put('/api/employees/me/profile', authenticateToken, async (req, res) => {
+  try {
+    const updated = await db.updateEmployeeProfile(req.user.id, req.body);
+    if (updated) {
+      res.json(updated);
+    } else {
+      res.status(404).json({ error: 'Employee not found' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
 // Updatable endpoints for Admin
 app.put('/api/employees/:id', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
   try {

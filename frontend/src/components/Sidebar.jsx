@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Users, Calendar, FileText, ClipboardList, Briefcase, 
-  Search, ShieldAlert, BookOpen, User, Sparkles, LogOut
+  Search, ShieldAlert, BookOpen, User, Sparkles, LogOut, Clock
 } from 'lucide-react';
 
 const navItems = {
@@ -25,7 +25,8 @@ const navItems = {
     { id: 'interviews', name: 'Candidate Interviews', icon: Sparkles, badge: 'Voice' }
   ],
   Employee: [
-    { id: 'portal', name: 'Employee Portal', icon: User },
+    { id: 'portal', name: 'Attendance Portal', icon: Clock },
+    { id: 'profile', name: 'My Profile', icon: User },
     { id: 'leaves', name: 'My Leaves', icon: Calendar },
     { id: 'payslips', name: 'My Payslips', icon: FileText },
     { id: 'performance', name: 'My Performance', icon: ClipboardList }

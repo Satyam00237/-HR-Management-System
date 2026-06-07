@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Play, Square, Calendar, CreditCard, Award, 
-  Plus, CheckCircle, Clock, Check, X, FileText, Download, UserCheck
+  Plus, CheckCircle, Clock, Check, X, FileText, Download, UserCheck,
+  User, Mail, Key, RefreshCw, Sparkles
 } from 'lucide-react';
 import { apiService } from '../api/apiService';
 
@@ -23,6 +24,14 @@ export default function EmployeeDashboard({ activeSubTab, currentEmployee, refre
 
   // Payslip Modal State
   const [selectedPayslip, setSelectedPayslip] = useState(null);
+
+  // Profile Form State
+  const [profileName, setProfileName] = useState(currentEmployee?.name || '');
+  const [profileEmail, setProfileEmail] = useState(currentEmployee?.email || '');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [profileAvatar, setProfileAvatar] = useState(currentEmployee?.avatar || '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState(null);
 
   // Load check-in status on mount/refresh
   useEffect(() => {
@@ -46,6 +55,12 @@ export default function EmployeeDashboard({ activeSubTab, currentEmployee, refre
         const leaves = await apiService.getLeaves();
         const filteredLeaves = leaves.filter(l => l.employeeId === currentEmployee.id);
         setLeaveRequests(filteredLeaves);
+
+        if (currentEmployee) {
+          setProfileName(currentEmployee.name || '');
+          setProfileEmail(currentEmployee.email || '');
+          setProfileAvatar(currentEmployee.avatar || '');
+        }
       } catch (e) {
         console.error('Failed to load portal data from backend', e);
       }
@@ -58,14 +73,19 @@ export default function EmployeeDashboard({ activeSubTab, currentEmployee, refre
     let timer;
     if (isCheckedIn && activeCheckIn && !activeCheckIn.checkOutTime) {
       const calculateElapsed = () => {
-        const [h, m, s] = activeCheckIn.checkInTime.split(':').map(Number);
-        const checkInDate = new Date();
-        checkInDate.setHours(h, m, s);
+        let checkInDate;
+        if (activeCheckIn.createdAt) {
+          checkInDate = new Date(activeCheckIn.createdAt);
+        } else {
+          const [h, m, s] = activeCheckIn.checkInTime.split(':').map(Number);
+          checkInDate = new Date();
+          checkInDate.setHours(h, m, s);
+        }
         
         const now = new Date();
         const diffMs = now - checkInDate;
         
-        if (diffMs < 0) return '00:00:00';
+        if (diffMs < 0 || isNaN(diffMs)) return '00:00:00';
         
         const diffSecs = Math.floor(diffMs / 1000);
         const hours = String(Math.floor(diffSecs / 3600)).padStart(2, '0');
@@ -133,6 +153,41 @@ export default function EmployeeDashboard({ activeSubTab, currentEmployee, refre
     } catch (err) {
       setLeaveMsg({ type: 'error', text: 'Leave request submission failed.' });
     }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    if (!profileName || !profileEmail) {
+      setProfileMsg({ type: 'error', text: 'Name and Email are required.' });
+      return;
+    }
+    setIsSavingProfile(true);
+    setProfileMsg(null);
+    try {
+      const payload = {
+        name: profileName,
+        email: profileEmail,
+        avatar: profileAvatar
+      };
+      if (profilePassword) {
+        payload.password = profilePassword;
+      }
+      await apiService.updateEmployeeProfile(payload);
+      setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
+      setProfilePassword('');
+      onTriggerRefresh();
+      setTimeout(() => setProfileMsg(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setProfileMsg({ type: 'error', text: 'Failed to update profile.' });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleRandomizeAvatar = () => {
+    const seed = Math.random().toString(36).substring(7);
+    setProfileAvatar(`https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`);
   };
 
   // Helper for rendering attendance calendar
@@ -523,6 +578,134 @@ export default function EmployeeDashboard({ activeSubTab, currentEmployee, refre
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4.5 Profile View */}
+      {activeSubTab === 'profile' && (
+        <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 animate-fadeIn font-sans">
+          {/* Official profile overview card */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-center flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl" />
+            <div className="space-y-4">
+              <div className="relative group">
+                <img 
+                  src={profileAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'} 
+                  className="w-24 h-24 rounded-2xl bg-slate-950 border border-slate-800 shadow-lg object-cover mx-auto" 
+                  alt="Avatar" 
+                />
+                <button
+                  onClick={handleRandomizeAvatar}
+                  type="button"
+                  className="absolute -bottom-2 right-1/4 p-1.5 bg-indigo-650 hover:bg-indigo-550 border border-indigo-600 rounded-xl text-white shadow-md shadow-indigo-650/20 hover:scale-105 transition-transform cursor-pointer"
+                  title="Randomize Avatar seed"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div>
+                <h4 className="text-base font-bold text-slate-200">{currentEmployee.name}</h4>
+                <span className="text-[10px] text-indigo-400 font-semibold tracking-wider uppercase block mt-0.5">
+                  {currentEmployee.designation}
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium block mt-1">
+                  ID: {currentEmployee.id}
+                </span>
+              </div>
+            </div>
+
+            <div className="w-full border-t border-slate-800/80 pt-4 mt-6 space-y-3.5 text-xs text-left">
+              <div className="flex justify-between items-center bg-slate-950/20 px-3 py-2 border border-slate-850 rounded-xl">
+                <span className="text-slate-500 font-medium">Department</span>
+                <span className="font-semibold text-slate-350">{currentEmployee.department}</span>
+              </div>
+              <div className="flex justify-between items-center bg-slate-950/20 px-3 py-2 border border-slate-850 rounded-xl">
+                <span className="text-slate-500 font-medium">Monthly Salary</span>
+                <span className="font-semibold text-emerald-450">${currentEmployee.salary.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center bg-slate-950/20 px-3 py-2 border border-slate-850 rounded-xl">
+                <span className="text-slate-500 font-medium">Role Level</span>
+                <span className="font-semibold text-slate-350">{currentEmployee.role}</span>
+              </div>
+              <div className="flex justify-between items-center bg-slate-950/20 px-3 py-2 border border-slate-850 rounded-xl">
+                <span className="text-slate-500 font-medium">Join Date</span>
+                <span className="font-semibold text-slate-350">{currentEmployee.joinDate}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Edit form */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl md:col-span-2">
+            <h4 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
+              <User className="w-4 h-4 text-indigo-400" /> Personal Profile Credentials
+            </h4>
+
+            {profileMsg && (
+              <div className={`p-3 text-xs rounded-xl mb-4 border ${
+                profileMsg.type === 'success' 
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+              }`}>
+                {profileMsg.text}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateProfile} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wide">Full Name</label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-600 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wide">Email Address</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-600 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    value={profileEmail}
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wide">Change Password</label>
+                <div className="relative">
+                  <Key className="w-4 h-4 text-slate-600 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                  <input
+                    type="password"
+                    value={profilePassword}
+                    onChange={(e) => setProfilePassword(e.target.value)}
+                    placeholder="Leave empty to keep current password"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800/80">
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-550 border border-indigo-500 text-white rounded-xl font-semibold shadow-md shadow-indigo-600/10 transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-50"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {isSavingProfile ? 'Saving Changes...' : 'Save Profile Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
