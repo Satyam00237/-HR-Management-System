@@ -1,8 +1,10 @@
-import './polyfills.js';
+import { polyfillsActive } from './polyfills.js';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { db } from './db/dbConnector.js';
+
+console.log('Server environment polyfills active:', polyfillsActive);
 import jwt from 'jsonwebtoken';
 import { geminiService } from './services/geminiService.js';
 import multer from 'multer';

@@ -45,3 +45,12 @@ if (typeof globalThis.Path2D === 'undefined') {
     rect() {}
   };
 }
+
+// Bind directly to global scope as well
+if (typeof global !== 'undefined') {
+  if (typeof global.DOMMatrix === 'undefined') global.DOMMatrix = globalThis.DOMMatrix;
+  if (typeof global.ImageData === 'undefined') global.ImageData = globalThis.ImageData;
+  if (typeof global.Path2D === 'undefined') global.Path2D = globalThis.Path2D;
+}
+
+export const polyfillsActive = true;
