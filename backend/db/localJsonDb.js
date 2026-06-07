@@ -324,7 +324,8 @@ const defaultDb = {
   jobs: defaultJobs,
   candidates: defaultCandidates,
   policies: defaultPolicies,
-  settings: { geminiKey: '' }
+  settings: { geminiKey: '' },
+  jobSeekers: []
 };
 
 export const localJsonDb = {
@@ -338,6 +339,7 @@ export const localJsonDb = {
         const data = fs.readFileSync(DB_PATH, 'utf8');
         this._cache = JSON.parse(data);
         if (!this._cache.settings) this._cache.settings = { geminiKey: '' };
+        if (!this._cache.jobSeekers) this._cache.jobSeekers = [];
       } catch (e) {
         console.error('Failed to read/parse db.json, using defaults', e);
         this._cache = JSON.parse(JSON.stringify(defaultDb));
@@ -382,13 +384,66 @@ export const localJsonDb = {
     data.employees = employees;
     this.writeAll(data);
   },
-  updateEmployee(updatedEmp) {
+  addEmployee(empData) {
     const list = this.getEmployees();
-    const idx = list.findIndex(e => e.id === updatedEmp.id);
-    if (idx !== -1) {
-      list[idx] = { ...list[idx], ...updatedEmp };
+    const newId = `EMP${String(list.length + 1).padStart(3, '0')}`;
+    const employee = {
+      id: newId,
+      name: empData.name,
+      email: empData.email,
+      role: empData.role,
+      password: empData.password,
+      department: empData.department,
+      designation: empData.designation,
+      joinDate: new Date().toISOString().split('T')[0],
+      status: 'Active',
+      salary: parseFloat(empData.salary),
+      leaveBalance: { casual: 12, medical: 10, earned: 18 },
+      attendanceStats: { checkInCount: 0, totalHours: 0, onTimeRate: 100 },
+      performanceScore: 85,
+      avatar: empData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(empData.name)}`
+    };
+    list.push(employee);
+    this.saveEmployees(list);
+    return employee;
+  },
+  toggleEmployeeStatus(id) {
+    const list = this.getEmployees();
+    const emp = list.find(e => e.id === id);
+    if (emp) {
+      emp.status = emp.status === 'Active' ? 'Inactive' : 'Active';
       this.saveEmployees(list);
-      return list[idx];
+      return emp;
+    }
+    return null;
+  },
+  updateEmployee(id, data) {
+    const list = this.getEmployees();
+    const emp = list.find(e => e.id === id);
+    if (emp) {
+      if (data.name !== undefined) emp.name = data.name;
+      if (data.email !== undefined) emp.email = data.email;
+      if (data.role !== undefined) emp.role = data.role;
+      if (data.department !== undefined) emp.department = data.department;
+      if (data.designation !== undefined) emp.designation = data.designation;
+      if (data.salary !== undefined) emp.salary = parseFloat(data.salary);
+      if (data.status !== undefined) emp.status = data.status;
+      if (data.avatar !== undefined) emp.avatar = data.avatar;
+      this.saveEmployees(list);
+      return emp;
+    }
+    return null;
+  },
+  updateEmployeeProfile(id, data) {
+    const list = this.getEmployees();
+    const emp = list.find(e => e.id === id);
+    if (emp) {
+      if (data.name !== undefined) emp.name = data.name;
+      if (data.email !== undefined) emp.email = data.email;
+      if (data.password !== undefined) emp.password = data.password;
+      if (data.avatar !== undefined) emp.avatar = data.avatar;
+      this.saveEmployees(list);
+      return emp;
     }
     return null;
   },
@@ -402,19 +457,20 @@ export const localJsonDb = {
     data.attendance = attendance;
     this.writeAll(data);
   },
-  checkIn(employeeId) {
+  checkIn(employeeId, localDate, localTime) {
     const list = this.getAttendance();
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDate || new Date().toISOString().split('T')[0];
     
     // Check if already checked in today
     const exists = list.find(a => a.employeeId === employeeId && a.date === today);
     if (exists) return exists;
 
-    const time = new Date().toTimeString().split(' ')[0];
+    const time = localTime || new Date().toTimeString().split(' ')[0];
     const checkInHour = parseInt(time.split(':')[0]);
+    const checkInMinute = parseInt(time.split(':')[1]);
     
-    // 09:00 AM limit for On Time
-    const status = checkInHour < 9 || (checkInHour === 9 && parseInt(time.split(':')[1]) <= 15) ? 'On Time' : 'Late';
+    // 09:15 AM limit for On Time
+    const status = checkInHour < 9 || (checkInHour === 9 && checkInMinute <= 15) ? 'On Time' : 'Late';
     
     const newEntry = {
       id: `ATT${Date.now()}`,
@@ -443,14 +499,14 @@ export const localJsonDb = {
 
     return newEntry;
   },
-  checkOut(employeeId) {
+  checkOut(employeeId, localDate, localTime) {
     const list = this.getAttendance();
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDate || new Date().toISOString().split('T')[0];
     const entryIndex = list.findIndex(a => a.employeeId === employeeId && a.date === today && !a.checkOutTime);
     
     if (entryIndex === -1) return null;
 
-    const time = new Date().toTimeString().split(' ')[0];
+    const time = localTime || new Date().toTimeString().split(' ')[0];
     const entry = list[entryIndex];
     entry.checkOutTime = time;
 
@@ -573,6 +629,36 @@ export const localJsonDb = {
     this.saveJobs(list);
     return newJob;
   },
+  deleteJob(id) {
+    const jobs = this.getJobs();
+    const idx = jobs.findIndex(j => j.id === id);
+    if (idx !== -1) {
+      jobs.splice(idx, 1);
+      this.saveJobs(jobs);
+      
+      // Also delete candidates associated with this jobId
+      const candidates = this.getCandidates();
+      const filteredCandidates = candidates.filter(c => c.jobId !== id);
+      this.saveCandidates(filteredCandidates);
+      return true;
+    }
+    return false;
+  },
+  updateJob(id, data) {
+    const jobs = this.getJobs();
+    const job = jobs.find(j => j.id === id);
+    if (job) {
+      if (data.title !== undefined) job.title = data.title;
+      if (data.department !== undefined) job.department = data.department;
+      if (data.type !== undefined) job.type = data.type;
+      if (data.location !== undefined) job.location = data.location;
+      if (data.status !== undefined) job.status = data.status;
+      if (data.description !== undefined) job.description = data.description;
+      this.saveJobs(jobs);
+      return job;
+    }
+    return null;
+  },
 
   // Candidates
   getCandidates() {
@@ -583,7 +669,7 @@ export const localJsonDb = {
     data.candidates = candidates;
     this.writeAll(data);
   },
-  addCandidate(jobId, name, email, resumeText) {
+  addCandidate(jobId, name, email, resumeText, skills = '') {
     const list = this.getCandidates();
     const jobs = this.getJobs();
     const job = jobs.find(j => j.id === jobId);
@@ -595,6 +681,7 @@ export const localJsonDb = {
       name,
       email,
       resumeText,
+      skills,
       matchScore: 0,
       status: 'Applied',
       evaluation: null,
@@ -612,9 +699,135 @@ export const localJsonDb = {
 
     return newCandidate;
   },
+  updateCandidateEvaluation(id, status, matchScore, evaluation) {
+    const list = this.getCandidates();
+    const cand = list.find(c => c.id === id);
+    if (cand) {
+      cand.status = status;
+      cand.matchScore = matchScore;
+      cand.evaluation = evaluation;
+      this.saveCandidates(list);
+      return cand;
+    }
+    return null;
+  },
+  updateCandidateInterviewReport(id, status, matchScore, interviewReport) {
+    const list = this.getCandidates();
+    const cand = list.find(c => c.id === id);
+    if (cand) {
+      cand.status = status;
+      cand.matchScore = matchScore;
+      cand.interviewReport = interviewReport;
+      this.saveCandidates(list);
+      return cand;
+    }
+    return null;
+  },
 
   // Policies
   getPolicies() {
     return this.readAll().policies;
+  },
+  updatePolicy(title, data) {
+    const policies = this.getPolicies();
+    const policy = policies.find(p => p.title === title);
+    if (policy) {
+      if (data.content !== undefined) policy.content = data.content;
+      if (data.title !== undefined && data.title !== title) {
+        policy.title = data.title;
+      }
+      this.writeAll(this.readAll());
+      return policy;
+    }
+    return null;
+  },
+
+  // JobSeekers
+  getJobSeekers() {
+    const data = this.readAll();
+    if (!data.jobSeekers) {
+      data.jobSeekers = [];
+      this.writeAll(data);
+    }
+    return data.jobSeekers;
+  },
+  saveJobSeekers(jobSeekers) {
+    const data = this.readAll();
+    data.jobSeekers = jobSeekers;
+    this.writeAll(data);
+  },
+  getJobSeeker(email) {
+    const list = this.getJobSeekers();
+    return list.find(s => s.email.toLowerCase() === email.toLowerCase()) || null;
+  },
+  addJobSeeker({ name, email, password }) {
+    const list = this.getJobSeekers();
+    const seeker = {
+      name,
+      email: email.toLowerCase(),
+      password,
+      skills: '',
+      education: '',
+      experience: '',
+      resumeText: '',
+      resumeFileName: ''
+    };
+    list.push(seeker);
+    this.saveJobSeekers(list);
+    return seeker;
+  },
+  updateJobSeekerProfile(email, profileData) {
+    const list = this.getJobSeekers();
+    const seeker = list.find(s => s.email.toLowerCase() === email.toLowerCase());
+    if (seeker) {
+      if (profileData.name) seeker.name = profileData.name;
+      if (profileData.skills !== undefined) seeker.skills = profileData.skills;
+      if (profileData.education !== undefined) seeker.education = profileData.education;
+      if (profileData.experience !== undefined) seeker.experience = profileData.experience;
+      if (profileData.resumeText !== undefined) seeker.resumeText = profileData.resumeText;
+      if (profileData.resumeFileName !== undefined) seeker.resumeFileName = profileData.resumeFileName;
+      this.saveJobSeekers(list);
+      return seeker;
+    }
+    return null;
+  },
+  applyForJob(jobId, email, applicationDetails) {
+    const list = this.getCandidates();
+    const jobs = this.getJobs();
+    const job = jobs.find(j => j.id === jobId);
+    
+    // Check if already applied
+    const existingApplication = list.find(c => c.jobId === jobId && c.email.toLowerCase() === email.toLowerCase());
+    if (existingApplication) {
+      throw new Error("You have already applied for this job position.");
+    }
+
+    const newApplication = {
+      id: `CAN${Date.now()}`,
+      jobId,
+      jobTitle: job ? job.title : 'Unknown Position',
+      name: applicationDetails.name,
+      email: email.toLowerCase(),
+      resumeText: applicationDetails.resumeText,
+      resumeFileName: applicationDetails.resumeFileName || '',
+      skills: applicationDetails.skills || '',
+      education: applicationDetails.education || '',
+      experience: applicationDetails.experience || '',
+      matchScore: 0,
+      status: 'Applied',
+      evaluation: null,
+      interviewReport: null
+    };
+
+    list.unshift(newApplication);
+    this.saveCandidates(list);
+
+    // Update job application count
+    if (job) {
+      job.candidatesCount += 1;
+      this.saveJobs(jobs);
+    }
+
+    return newApplication;
   }
 };

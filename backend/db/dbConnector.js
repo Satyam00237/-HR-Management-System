@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dns from 'dns';
+import { localJsonDb } from './localJsonDb.js';
 
 // Force DNS resolution to prefer IPv4 (fixes MongoDB Atlas connection issues on IPv6 networks)
 dns.setDefaultResultOrder('ipv4first');
@@ -33,11 +34,15 @@ if (!MONGODB_URI) {
 }
 
 export const db = {
+  isMongoConnected: false,
   async init() {
     try {
       console.log(`Connecting to MongoDB at ${MONGODB_URI}...`);
-      await mongoose.connect(MONGODB_URI);
+      await mongoose.connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000
+      });
       console.log('MongoDB connected successfully.');
+      this.isMongoConnected = true;
 
       // Check if data seeding is required
       const empCount = await Employee.countDocuments();
@@ -46,7 +51,9 @@ export const db = {
         await this.seedData();
       }
     } catch (err) {
-      console.error('Failed to initialize database connector:', err);
+      console.error('Failed to initialize database connector (MongoDB connection failed). Falling back to local JSON database:', err);
+      this.isMongoConnected = false;
+      localJsonDb.init();
     }
   },
 
@@ -118,11 +125,13 @@ export const db = {
 
   // Settings
   async getGeminiKey() {
+    if (!this.isMongoConnected) return localJsonDb.getGeminiKey();
     const setting = await Setting.findOne({ key: 'geminiKey' });
     return setting ? setting.value : '';
   },
 
   async saveGeminiKey(key) {
+    if (!this.isMongoConnected) return localJsonDb.saveGeminiKey(key);
     await Setting.findOneAndUpdate(
       { key: 'geminiKey' },
       { value: key },
@@ -132,10 +141,12 @@ export const db = {
 
   // Employees
   async getEmployees() {
+    if (!this.isMongoConnected) return localJsonDb.getEmployees();
     return await Employee.find().sort({ createdAt: 1 }).lean();
   },
 
   async addEmployee(empData) {
+    if (!this.isMongoConnected) return localJsonDb.addEmployee(empData);
     const list = await Employee.find().lean();
     const newId = `EMP${String(list.length + 1).padStart(3, '0')}`;
     const employee = new Employee({
@@ -158,6 +169,7 @@ export const db = {
   },
 
   async toggleEmployeeStatus(id) {
+    if (!this.isMongoConnected) return localJsonDb.toggleEmployeeStatus(id);
     const emp = await Employee.findOne({ id });
     if (emp) {
       emp.status = emp.status === 'Active' ? 'Inactive' : 'Active';
@@ -169,10 +181,12 @@ export const db = {
 
   // Attendance
   async getAttendance() {
+    if (!this.isMongoConnected) return localJsonDb.getAttendance();
     return await Attendance.find().sort({ date: -1, checkInTime: -1 }).lean();
   },
 
   async checkIn(employeeId, localDate, localTime) {
+    if (!this.isMongoConnected) return localJsonDb.checkIn(employeeId, localDate, localTime);
     const today = localDate || new Date().toISOString().split('T')[0];
     
     // Check if already checked in today
@@ -214,6 +228,7 @@ export const db = {
   },
 
   async checkOut(employeeId, localDate, localTime) {
+    if (!this.isMongoConnected) return localJsonDb.checkOut(employeeId, localDate, localTime);
     const today = localDate || new Date().toISOString().split('T')[0];
     const entry = await Attendance.findOne({ employeeId, date: today, checkOutTime: null });
     
@@ -244,10 +259,12 @@ export const db = {
 
   // Leaves
   async getLeaves() {
+    if (!this.isMongoConnected) return localJsonDb.getLeaves();
     return await Leave.find().sort({ createdAt: -1 }).lean();
   },
 
   async requestLeave(employeeId, leaveType, startDate, endDate, reason) {
+    if (!this.isMongoConnected) return localJsonDb.requestLeave(employeeId, leaveType, startDate, endDate, reason);
     const emp = await Employee.findOne({ id: employeeId });
     
     const start = new Date(startDate);
@@ -273,6 +290,7 @@ export const db = {
   },
 
   async approveLeave(leaveId, approverName) {
+    if (!this.isMongoConnected) return localJsonDb.approveLeave(leaveId, approverName);
     const leave = await Leave.findOne({ id: leaveId });
     if (!leave) return null;
 
@@ -296,6 +314,7 @@ export const db = {
   },
 
   async rejectLeave(leaveId, approverName) {
+    if (!this.isMongoConnected) return localJsonDb.rejectLeave(leaveId, approverName);
     const leave = await Leave.findOne({ id: leaveId });
     if (!leave) return null;
 
@@ -307,10 +326,12 @@ export const db = {
 
   // Jobs
   async getJobs() {
+    if (!this.isMongoConnected) return localJsonDb.getJobs();
     return await Job.find().sort({ createdAt: -1 }).lean();
   },
 
   async createJob(title, department, type, location, description) {
+    if (!this.isMongoConnected) return localJsonDb.createJob(title, department, type, location, description);
     const list = await Job.find().lean();
     const newJob = new Job({
       id: `JOB${String(list.length + 1).padStart(3, '0')}`,
@@ -327,6 +348,7 @@ export const db = {
   },
 
   async deleteJob(id) {
+    if (!this.isMongoConnected) return localJsonDb.deleteJob(id);
     const result = await Job.deleteOne({ id });
     if (result.deletedCount > 0) {
       // Also delete candidates associated with this jobId
@@ -338,10 +360,12 @@ export const db = {
 
   // Candidates
   async getCandidates() {
+    if (!this.isMongoConnected) return localJsonDb.getCandidates();
     return await Candidate.find().sort({ createdAt: -1 }).lean();
   },
 
   async addCandidate(jobId, name, email, resumeText, skills = '') {
+    if (!this.isMongoConnected) return localJsonDb.addCandidate(jobId, name, email, resumeText, skills);
     const job = await Job.findOne({ id: jobId });
     
     const newCandidate = new Candidate({
@@ -370,6 +394,7 @@ export const db = {
   },
 
   async updateCandidateEvaluation(id, status, matchScore, evaluation) {
+    if (!this.isMongoConnected) return localJsonDb.updateCandidateEvaluation(id, status, matchScore, evaluation);
     const cand = await Candidate.findOne({ id });
     if (cand) {
       cand.status = status;
@@ -382,6 +407,7 @@ export const db = {
   },
 
   async updateCandidateInterviewReport(id, status, matchScore, interviewReport) {
+    if (!this.isMongoConnected) return localJsonDb.updateCandidateInterviewReport(id, status, matchScore, interviewReport);
     const cand = await Candidate.findOne({ id });
     if (cand) {
       cand.status = status;
@@ -395,15 +421,18 @@ export const db = {
 
   // Policies
   async getPolicies() {
+    if (!this.isMongoConnected) return localJsonDb.getPolicies();
     return await Policy.find().lean();
   },
 
   // JobSeekers (Candidate Accounts)
   async getJobSeeker(email) {
+    if (!this.isMongoConnected) return localJsonDb.getJobSeeker(email);
     return await JobSeeker.findOne({ email: email.toLowerCase() }).lean();
   },
 
   async addJobSeeker({ name, email, password }) {
+    if (!this.isMongoConnected) return localJsonDb.addJobSeeker({ name, email, password });
     const seeker = new JobSeeker({
       name,
       email: email.toLowerCase(),
@@ -413,6 +442,7 @@ export const db = {
   },
 
   async updateJobSeekerProfile(email, profileData) {
+    if (!this.isMongoConnected) return localJsonDb.updateJobSeekerProfile(email, profileData);
     const seeker = await JobSeeker.findOne({ email: email.toLowerCase() });
     if (seeker) {
       if (profileData.name) seeker.name = profileData.name;
@@ -428,6 +458,7 @@ export const db = {
   },
 
   async applyForJob(jobId, email, applicationDetails) {
+    if (!this.isMongoConnected) return localJsonDb.applyForJob(jobId, email, applicationDetails);
     const job = await Job.findOne({ id: jobId });
     
     // Check if already applied
@@ -463,6 +494,7 @@ export const db = {
   },
 
   async updateEmployee(id, data) {
+    if (!this.isMongoConnected) return localJsonDb.updateEmployee(id, data);
     const emp = await Employee.findOne({ id });
     if (emp) {
       if (data.name !== undefined) emp.name = data.name;
@@ -480,6 +512,7 @@ export const db = {
   },
 
   async updateEmployeeProfile(id, data) {
+    if (!this.isMongoConnected) return localJsonDb.updateEmployeeProfile(id, data);
     const emp = await Employee.findOne({ id });
     if (emp) {
       if (data.name !== undefined) emp.name = data.name;
@@ -493,6 +526,7 @@ export const db = {
   },
 
   async updateJob(id, data) {
+    if (!this.isMongoConnected) return localJsonDb.updateJob(id, data);
     const job = await Job.findOne({ id });
     if (job) {
       if (data.title !== undefined) job.title = data.title;
@@ -508,6 +542,7 @@ export const db = {
   },
 
   async updatePolicy(title, data) {
+    if (!this.isMongoConnected) return localJsonDb.updatePolicy(title, data);
     const policy = await Policy.findOne({ title });
     if (policy) {
       if (data.content !== undefined) policy.content = data.content;
