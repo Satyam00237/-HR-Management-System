@@ -359,7 +359,19 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
       setApplyEducation(data.education || '');
       setApplyExperience(data.experience || '');
     } catch (e) {
-      console.error('Failed to load profile:', e);
+      console.error('Failed to load profile, using fallback session details:', e);
+      const fallback = {
+        name: currentUser?.name || 'Candidate',
+        email: currentUser?.email || '',
+        skills: '',
+        education: '',
+        experience: '',
+        resumeText: '',
+        resumeFileName: ''
+      };
+      setProfile(fallback);
+      setProfileName(fallback.name);
+      setApplyName(fallback.name);
     }
   };
 
@@ -367,9 +379,10 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
     setAppsLoading(true);
     try {
       const data = await apiService.getCandidateApplications();
-      setApplications(data);
+      setApplications(data || []);
     } catch (e) {
       console.error('Failed to load applications:', e);
+      setApplications([]);
     } finally {
       setAppsLoading(false);
     }
