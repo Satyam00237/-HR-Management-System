@@ -450,7 +450,7 @@ export const geminiService = {
   /**
    * AI Recruitment Voice Interviewer - Get Next Question
    */
-  async getNextInterviewQuestion(jobTitle, currentRound, history) {
+  async getNextInterviewQuestion(jobTitle, currentRound, history, resumeText = '') {
     const genAI = getGeminiClient();
     
     if (!genAI) {
@@ -462,17 +462,21 @@ export const geminiService = {
       const formattedHistory = history.map(h => `${h.role === 'assistant' ? 'Interviewer' : 'Candidate'}: ${h.content}`).join('\n');
       
       const prompt = `
-        You are an elite AI technical interviewer conducting a voice interview for the position: "${jobTitle}".
+        You are an elite AI technical interviewer conducting a video/voice interview for the position: "${jobTitle}".
         This is question number ${currentRound} out of 3.
         
+        Candidate's Uploaded Resume:
+        ${resumeText || "Not provided"}
+
         Previous Conversation History:
         ${formattedHistory}
         
         Generate the next single, concise interview question for the candidate.
-        If it's question 1: Ask an icebreaker technical question.
-        If it's question 2 or 3: Ask a specific follow-up based on their previous answers or a new scenario.
+        The question MUST be tailored to the candidate's background, skills, projects, and work experience as detailed in their resume.
+        If it's question 1: Ask an initial question about a project, skill, or experience listed on their resume.
+        If it's question 2 or 3: Ask a specific technical follow-up based on their previous answers or dive into another detail of their resume.
         
-        Keep your question highly focused, friendly, and under 30 words so it sounds natural when spoken. Do not write any pleasantries except a brief transition.
+        Keep your question highly focused, professional, and under 35 words so it sounds natural when spoken. Do not write any pleasantries except a brief transition.
       `;
 
       const result = await generateWithModelFallback(genAI, prompt);

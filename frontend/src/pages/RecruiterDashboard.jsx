@@ -1233,32 +1233,21 @@ HR Generalist | FinTech Solutions (2023 - Present)
                   <div className="bg-slate-950/40 p-4 border border-slate-850 rounded-2xl space-y-3">
                     <h5 className="text-xs font-bold text-slate-300 flex items-center gap-1.5 uppercase tracking-wider text-indigo-400">
                       <Clock className="w-3.5 h-3.5" />
-                      Interview Schedule
+                      AI Video Interview Schedule
                     </h5>
                     
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Interview Date</label>
-                        <input
-                          type="date"
-                          value={schDate}
-                          onChange={(e) => setSchDate(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-850 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Interview Time</label>
-                        <input
-                          type="time"
-                          value={schTime}
-                          onChange={(e) => setSchTime(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-850 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Interview Date</label>
+                      <input
+                        type="date"
+                        value={schDate}
+                        onChange={(e) => setSchDate(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-850 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                      />
                     </div>
                     {selectedVettingCand.interviewDate && (
                       <p className="text-[10px] text-emerald-405 font-bold">
-                        Current Schedule: {selectedVettingCand.interviewDate} at {selectedVettingCand.interviewTime}
+                        Current Schedule: {selectedVettingCand.interviewDate}
                       </p>
                     )}
                   </div>
@@ -1308,15 +1297,15 @@ HR Generalist | FinTech Solutions (2023 - Present)
                       </button>
                       <button
                         onClick={async () => {
-                          if (!schDate || !schTime) {
-                            alert('Please select both Interview Date and Time.');
+                          if (!schDate) {
+                            alert('Please select the Interview Date.');
                             return;
                           }
                           try {
-                            await apiService.updateCandidateStatus(selectedVettingCand.id, 'Interviewing', schDate, schTime);
+                            await apiService.updateCandidateStatus(selectedVettingCand.id, 'Interviewing', schDate, '');
                             setSelectedVettingCand(null);
                             onTriggerRefresh();
-                            alert('Candidate status updated: Shortlisted for Interviews');
+                            alert('Candidate status updated: Shortlisted for AI Video Interview');
                           } catch (e) {
                             alert('Failed to shortlist candidate.');
                           }
@@ -1345,12 +1334,12 @@ HR Generalist | FinTech Solutions (2023 - Present)
                       </button>
                       <button
                         onClick={async () => {
-                          if (!schDate || !schTime) {
-                            alert('Please select both Interview Date and Time.');
+                          if (!schDate) {
+                            alert('Please select the Interview Date.');
                             return;
                           }
                           try {
-                            await apiService.updateCandidateStatus(selectedVettingCand.id, 'Interviewing', schDate, schTime);
+                            await apiService.updateCandidateStatus(selectedVettingCand.id, 'Interviewing', schDate, '');
                             setSelectedVettingCand(null);
                             onTriggerRefresh();
                             alert('Candidate Interview Rescheduled Successfully.');
@@ -1400,15 +1389,17 @@ HR Generalist | FinTech Solutions (2023 - Present)
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Interview Time</label>
-                <input
-                  type="time"
-                  value={schTime}
-                  onChange={(e) => setSchTime(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-              </div>
+              {selectedScheduleCand.status === 'Shortlisted' && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Interview Time</label>
+                  <input
+                    type="time"
+                    value={schTime}
+                    onChange={(e) => setSchTime(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Actions */}
@@ -1421,17 +1412,21 @@ HR Generalist | FinTech Solutions (2023 - Present)
               </button>
               <button
                 onClick={async () => {
-                  if (!schDate || !schTime) {
-                    alert('Please select both Interview Date and Time.');
-                    return;
-                  }
                   try {
                     if (selectedScheduleCand.status === 'Shortlisted') {
+                      if (!schDate || !schTime) {
+                        alert('Please select both Interview Date and Time.');
+                        return;
+                      }
                       await apiService.updateCandidateStatus(selectedScheduleCand.id, 'Shortlisted', '', '', schDate, schTime);
                       alert('1-to-1 Technical Interview scheduled successfully!');
                     } else {
-                      await apiService.updateCandidateStatus(selectedScheduleCand.id, 'Interviewing', schDate, schTime);
-                      alert('AI Voice Interview scheduled successfully!');
+                      if (!schDate) {
+                        alert('Please select the Interview Date.');
+                        return;
+                      }
+                      await apiService.updateCandidateStatus(selectedScheduleCand.id, 'Interviewing', schDate, '');
+                      alert('AI Video Interview scheduled successfully!');
                     }
                     setSelectedScheduleCand(null);
                     onTriggerRefresh();

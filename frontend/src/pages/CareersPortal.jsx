@@ -23,6 +23,37 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
   const [interviewReport, setInterviewReport] = useState(null);
   const [speechSupported, setSpeechSupported] = useState(false);
   
+  // Webcam States & Refs
+  const videoRef = useRef(null);
+  const [videoStream, setVideoStream] = useState(null);
+
+  // Handle webcam stream based on isInterviewing status
+  useEffect(() => {
+    let activeStream = null;
+    if (isInterviewing) {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => {
+          activeStream = stream;
+          setVideoStream(stream);
+        })
+        .catch(err => {
+          console.warn('Webcam access denied or unavailable:', err);
+        });
+    }
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+      }
+      setVideoStream(null);
+    };
+  }, [isInterviewing]);
+
+  useEffect(() => {
+    if (videoStream && videoRef.current) {
+      videoRef.current.srcObject = videoStream;
+    }
+  }, [videoStream, isInterviewing]);
+  
   // Auth Modal States (Login / Registration)
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login', 'register'
@@ -142,7 +173,7 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
     
     setEvaluating(true);
     try {
-      const initialQuestion = await apiService.getNextInterviewQuestion(app.jobTitle, 1, []);
+      const initialQuestion = await apiService.getNextInterviewQuestion(app.jobTitle, 1, [], app.resumeText || '');
       
       setInterviewHistory([
         { role: 'assistant', content: initialQuestion }
@@ -218,7 +249,7 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
       
       setEvaluating(true);
       try {
-        const nextQ = await apiService.getNextInterviewQuestion(jobTitle, nextRoundNum, updatedHistory);
+        const nextQ = await apiService.getNextInterviewQuestion(jobTitle, nextRoundNum, updatedHistory, activeInterviewApp.resumeText || '');
         setInterviewHistory(prev => [...prev, { role: 'assistant', content: nextQ }]);
         speakQuestion(nextQ);
       } catch (e) {
@@ -440,14 +471,14 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
   if (activeInterviewApp) {
     return (
       <div className="min-h-screen w-full bg-slate-950 text-slate-100 font-sans flex items-center justify-center p-4">
-        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-3xl p-6 max-w-2xl w-full min-h-[500px] flex flex-col justify-between shadow-2xl relative animate-fade-in">
+        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-3xl p-6 max-w-4xl w-full min-h-[500px] flex flex-col justify-between shadow-2xl relative animate-fade-in">
           
           {isInterviewing ? (
             <div className="flex-1 flex flex-col justify-between">
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
                 <div>
-                  <h5 className="text-sm font-bold text-slate-200">AI Voice Interview Round</h5>
+                  <h5 className="text-sm font-bold text-slate-200">AI Video Interview Round</h5>
                   <p className="text-xs text-indigo-400 font-semibold">{activeInterviewApp.jobTitle}</p>
                 </div>
                 <span className="text-[10px] font-bold px-2.5 py-0.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-md">
@@ -455,83 +486,128 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                 </span>
               </div>
 
-              {/* Chat Stream */}
-              <div className="flex-1 my-4 p-4 bg-slate-950/40 border border-slate-850 rounded-2xl overflow-y-auto max-h-[260px] space-y-3.5 scrollbar-thin">
-                {interviewHistory.map((h, idx) => (
-                  <div key={idx} className={`flex ${h.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
-                      h.role === 'user'
-                        ? 'bg-indigo-600 text-white rounded-tr-none shadow-md shadow-indigo-600/10'
-                        : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/65'
-                    }`}>
-                      <span className="font-bold block mb-1 text-[9px] uppercase tracking-wide opacity-80">
-                        {h.role === 'user' ? currentUser.name : 'AI Interviewer'}
-                      </span>
-                      {h.content}
-                    </div>
+              {/* Grid content */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch flex-1">
+                {/* Left side: Video Feed */}
+                <div className="flex flex-col justify-between bg-slate-950/60 border border-slate-850 rounded-2xl p-4 relative min-h-[300px] overflow-hidden shadow-inner">
+                  {/* Status Indicator */}
+                  <div className="absolute top-6 left-6 z-10 flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800">
+                    <span className="w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-rose-400">REC LIVE</span>
                   </div>
-                ))}
-                {evaluating && (
-                  <div className="flex justify-start">
-                    <div className="bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-700/50 flex items-center gap-2">
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                      <span className="text-xs">Evaluating answer...</span>
-                    </div>
+                  
+                  {/* AI Logo / Assistant Label */}
+                  <div className="absolute top-6 right-6 z-10 flex items-center gap-1.5 bg-indigo-500/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-indigo-500/20">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-300">AI Vetting Active</span>
                   </div>
-                )}
-              </div>
 
-              {/* Soundwave Mic Button & Fallback Input */}
-              <div className="space-y-4 pt-3 border-t border-slate-800">
-                <div className="flex items-center gap-3">
-                  {speechSupported && (
+                  <div className="flex-1 flex items-center justify-center relative rounded-xl overflow-hidden bg-slate-950 min-h-[220px]">
+                    {videoStream ? (
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover transform -scale-x-100"
+                      />
+                    ) : (
+                      <div className="text-center p-6 space-y-3">
+                        <div className="w-12 h-12 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-500">
+                          <AlertCircle className="w-6 h-6 animate-pulse" />
+                        </div>
+                        <p className="text-xs text-slate-400 font-semibold">Camera Access Required</p>
+                        <p className="text-[10px] text-slate-500 max-w-[200px] mx-auto">Please allow camera permissions to enable the video vetting environment.</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="mt-3 text-center text-[10px] text-slate-500 font-semibold bg-slate-950/40 p-2 rounded-lg border border-slate-900">
+                    Webcam feed is processed locally for gesture and facial confidence indicators.
+                  </div>
+                </div>
+
+                {/* Right side: Chat Stream & Actions */}
+                <div className="flex flex-col justify-between min-h-[300px]">
+                  {/* Chat Stream */}
+                  <div className="flex-1 p-4 bg-slate-950/40 border border-slate-850 rounded-2xl overflow-y-auto max-h-[220px] space-y-3.5 scrollbar-thin mb-4">
+                    {interviewHistory.map((h, idx) => (
+                      <div key={idx} className={`flex ${h.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
+                          h.role === 'user'
+                            ? 'bg-indigo-600 text-white rounded-tr-none shadow-md shadow-indigo-600/10'
+                            : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/65'
+                        }`}>
+                          <span className="font-bold block mb-1 text-[9px] uppercase tracking-wide opacity-80">
+                            {h.role === 'user' ? currentUser.name : 'AI Interviewer'}
+                          </span>
+                          {h.content}
+                        </div>
+                      </div>
+                    ))}
+                    {evaluating && (
+                      <div className="flex justify-start">
+                        <div className="bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-700/50 flex items-center gap-2">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                          <span className="text-xs">Evaluating answer...</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Soundwave Mic Button & Fallback Input */}
+                  <div className="space-y-3 pt-3 border-t border-slate-850">
+                    <div className="flex items-center gap-3">
+                      {speechSupported && (
+                        <button
+                          onClick={toggleListening}
+                          disabled={evaluating}
+                          className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-lg border transition-all ${
+                            isListening 
+                              ? 'bg-rose-600 text-white border-rose-500 animate-pulse scale-[1.03]' 
+                              : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-855 hover:border-slate-750'
+                          }`}
+                          title={isListening ? "Listening... Click to pause" : "Click to speak answer"}
+                        >
+                          {isListening ? <Mic className="w-5 h-5 animate-pulse" /> : <MicOff className="w-5 h-5" />}
+                        </button>
+                      )}
+                      <div className="flex-1 relative">
+                        <input
+                          type="text"
+                          value={speechAnswer}
+                          onChange={(e) => setSpeechAnswer(e.target.value)}
+                          disabled={evaluating}
+                          placeholder={isListening ? "Listening to voice input..." : "Speak using mic or type response..."}
+                          className="w-full bg-slate-950 border border-slate-850 rounded-xl pl-4 pr-10 py-3 text-xs text-slate-100 placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
+                        />
+                        <button
+                          onClick={handleNextRound}
+                          disabled={evaluating || !speechAnswer.trim()}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-indigo-400 hover:text-indigo-300 disabled:opacity-30 transition-colors cursor-pointer"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {isListening && (
+                      <div className="flex items-center justify-center gap-1.5 text-[10px] text-rose-455 font-semibold animate-pulse">
+                        <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
+                        <span>Microphone Active: Transcribing your voice live...</span>
+                      </div>
+                    )}
                     <button
-                      onClick={toggleListening}
-                      disabled={evaluating}
-                      className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 shadow-lg border transition-all ${
-                        isListening 
-                          ? 'bg-rose-600 text-white border-rose-500 animate-pulse scale-[1.05]' 
-                          : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-850 hover:border-slate-750'
-                      }`}
-                      title={isListening ? "Listening... Click to pause" : "Click to speak answer"}
+                      onClick={() => {
+                        setIsInterviewing(false);
+                        setActiveInterviewApp(null);
+                        window.speechSynthesis.cancel();
+                      }}
+                      className="w-full py-2 bg-rose-500/10 hover:bg-rose-500/15 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/20 hover:border-rose-500/35 transition-colors"
                     >
-                      {isListening ? <Mic className="w-6 h-6 animate-pulse" /> : <MicOff className="w-6 h-6" />}
-                    </button>
-                  )}
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={speechAnswer}
-                      onChange={(e) => setSpeechAnswer(e.target.value)}
-                      disabled={evaluating}
-                      placeholder={isListening ? "Listening to voice input..." : "Speak using mic or type response..."}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl pl-4 pr-10 py-3.5 text-xs text-slate-100 placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
-                    />
-                    <button
-                      onClick={handleNextRound}
-                      disabled={evaluating || !speechAnswer.trim()}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-indigo-400 hover:text-indigo-300 disabled:opacity-30 transition-colors cursor-pointer"
-                    >
-                      <Send className="w-4 h-4" />
+                      Terminate Interview Session
                     </button>
                   </div>
                 </div>
-                {isListening && (
-                  <div className="flex items-center justify-center gap-1.5 text-[10px] text-rose-455 font-semibold animate-pulse">
-                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
-                    <span>Microphone Active: Transcribing your voice live...</span>
-                  </div>
-                )}
-                <button
-                  onClick={() => {
-                    setIsInterviewing(false);
-                    setActiveInterviewApp(null);
-                    window.speechSynthesis.cancel();
-                  }}
-                  className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/15 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/20 hover:border-rose-500/35 transition-colors"
-                >
-                  Terminate Interview Session
-                </button>
               </div>
             </div>
           ) : interviewReport ? (
@@ -725,10 +801,10 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                                 )}
                                 {app.status === 'Interviewing' && (
                                   <div>
-                                    <p className="text-indigo-400 font-semibold mt-0.5">✨ Shortlisted for interview</p>
+                                    <p className="text-indigo-400 font-semibold mt-0.5">✨ Shortlisted for AI Video Interview</p>
                                     {app.interviewDate ? (
                                       <p className="text-slate-400 text-[10px] mt-0.5">
-                                        Date: {app.interviewDate} at {app.interviewTime}
+                                        Date: {app.interviewDate}
                                       </p>
                                     ) : (
                                       <p className="text-slate-500 italic text-[10px] mt-0.5">Interview schedule pending</p>
@@ -1024,18 +1100,21 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                           {app.interviewDate ? (
                             <div className="space-y-2">
                               <p className="text-slate-350">
-                                Date: <span className="font-bold text-slate-200">{app.interviewDate}</span> at <span className="font-bold text-slate-200">{app.interviewTime}</span>
+                                Date: <span className="font-bold text-slate-200">{app.interviewDate}</span>
                               </p>
                               {(() => {
                                 const now = new Date();
-                                const scheduledDateTime = new Date(`${app.interviewDate}T${app.interviewTime}`);
-                                const isLocked = isNaN(scheduledDateTime.getTime()) ? true : now < scheduledDateTime;
+                                const year = now.getFullYear();
+                                const month = String(now.getMonth() + 1).padStart(2, '0');
+                                const day = String(now.getDate()).padStart(2, '0');
+                                const todayStr = `${year}-${month}-${day}`;
+                                const isLocked = app.interviewDate ? todayStr < app.interviewDate : true;
 
                                 if (isLocked) {
                                   return (
                                     <div className="flex items-center gap-2 p-2 bg-slate-950/60 rounded-lg text-slate-500 text-[11px] font-semibold border border-slate-900">
                                       <Clock className="w-3.5 h-3.5 shrink-0" />
-                                      <span>Locked until scheduled date and time</span>
+                                      <span>Locked until scheduled date: {app.interviewDate}</span>
                                     </div>
                                   );
                                 } else {
@@ -1045,14 +1124,14 @@ export default function CareersPortal({ onClose, onLoginSuccess, currentUser, on
                                       className="w-full flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-550 hover:to-violet-550 text-white rounded-xl text-xs font-bold shadow-md transition-all hover:scale-[1.01]"
                                     >
                                       <Play className="w-3.5 h-3.5" />
-                                      Start AI Voice Interview
+                                      Start AI Video Interview
                                     </button>
                                   );
                                 }
                               })()}
                             </div>
                           ) : (
-                            <p className="text-slate-455 italic">Interview timing will be scheduled shortly by HR.</p>
+                            <p className="text-slate-455 italic">Interview date will be scheduled shortly by HR.</p>
                           )}
                         </div>
                       )}

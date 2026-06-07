@@ -709,12 +709,12 @@ app.post('/api/ai/screen', authenticateToken, authorizeRoles('Admin', 'HR Recrui
 
 app.post('/api/ai/interview/question', authenticateToken, authorizeRoles('Admin', 'HR Recruiter', 'Candidate'), async (req, res) => {
   try {
-    const { jobTitle, currentRound, history } = req.body;
+    const { jobTitle, currentRound, history, resumeText } = req.body;
     if (!jobTitle || !currentRound || !history) {
       return res.status(400).json({ error: 'Missing question generation params' });
     }
 
-    const question = await geminiService.getNextInterviewQuestion(jobTitle, currentRound, history);
+    const question = await geminiService.getNextInterviewQuestion(jobTitle, currentRound, history, resumeText || '');
     res.json({ question });
   } catch (e) {
     res.status(500).json({ error: 'AI question generation failed' });

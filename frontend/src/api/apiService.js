@@ -227,11 +227,11 @@ export const apiService = {
     return handleResponse(res);
   },
 
-  async getNextInterviewQuestion(jobTitle, currentRound, history) {
+  async getNextInterviewQuestion(jobTitle, currentRound, history, resumeText = '') {
     const res = await fetch(`${API_BASE}/ai/interview/question`, {
       method: 'POST',
       headers: getAuthHeaders('application/json'),
-      body: JSON.stringify({ jobTitle, currentRound, history })
+      body: JSON.stringify({ jobTitle, currentRound, history, resumeText })
     });
     const data = await handleResponse(res);
     return data.question;
