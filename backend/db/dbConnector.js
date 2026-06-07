@@ -35,6 +35,7 @@ if (!MONGODB_URI) {
 
 export const db = {
   isMongoConnected: false,
+  connectionError: null,
   async init() {
     try {
       console.log(`Connecting to MongoDB at ${MONGODB_URI}...`);
@@ -43,6 +44,7 @@ export const db = {
       });
       console.log('MongoDB connected successfully.');
       this.isMongoConnected = true;
+      this.connectionError = null;
 
       // Check if data seeding is required
       const empCount = await Employee.countDocuments();
@@ -53,6 +55,7 @@ export const db = {
     } catch (err) {
       console.error('Failed to initialize database connector (MongoDB connection failed). Falling back to local JSON database:', err);
       this.isMongoConnected = false;
+      this.connectionError = err.message || String(err);
       localJsonDb.init();
     }
   },

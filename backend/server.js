@@ -825,6 +825,16 @@ app.post('/api/settings/key', authenticateToken, authorizeRoles('Admin'), async 
   }
 });
 
+// Database connection status debug route
+app.get('/api/db-status', (req, res) => {
+  res.json({
+    isMongoConnected: db.isMongoConnected,
+    connectionError: db.connectionError,
+    hasMongoUri: !!process.env.MONGODB_URI,
+    mongoUriPrefix: process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 30) : 'none'
+  });
+});
+
 // App listener
 app.listen(PORT, () => {
   console.log(`===============================================`);
