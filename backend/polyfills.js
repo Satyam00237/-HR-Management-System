@@ -54,3 +54,7 @@ if (typeof global !== 'undefined') {
 }
 
 export const polyfillsActive = true;
+
+// Force Vercel to bundle the PDF worker by statically importing it
+import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
+
