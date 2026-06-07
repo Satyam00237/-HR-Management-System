@@ -255,8 +255,13 @@ export default function HRAssistant({ currentEmployee }) {
               <div className="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20">
                 <Sparkles className="w-5 h-5 animate-pulse" />
               </div>
-              <div>
-                <h4 className="text-sm font-semibold text-slate-100">{welcomeInfo.title}</h4>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-slate-100">{welcomeInfo.title}</h4>
+                  <span className="text-[8px] font-extrabold px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded uppercase tracking-wider animate-pulse shadow-sm shadow-indigo-500/10">
+                    AI Powered
+                  </span>
+                </div>
                 <p className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider">{welcomeInfo.subtitle}</p>
               </div>
             </div>

@@ -7,16 +7,90 @@
 @layer base {
   body {
     @apply bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500/30 selection:text-indigo-200 overflow-x-hidden;
+    /* Soft premium background radial gradient using Cyan (#06B6D4) and Blue (#3B82F6) */
     background-image: 
-      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.04) 0px, transparent 50%),
-      radial-gradient(at 50% 0%, rgba(139, 92, 246, 0.04) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.04) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.05) 0px, transparent 50%),
+      radial-gradient(at 50% 0%, rgba(59, 130, 246, 0.04) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.03) 0px, transparent 50%);
     background-attachment: fixed;
     min-height: 100vh;
   }
 }
 
-/* Glassmorphism scrollbar */
+@layer components {
+  /* Premium Glassmorphic Cards with Cyan Glow and Soft Shadows */
+  .bg-slate-900, .bg-slate-900\/60, .bg-slate-900\/30, .bg-slate-900\/50, .bg-slate-900\/40 {
+    background-color: rgba(30, 41, 59, 0.45) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  /* Hover Elevation & Accent Glow for statistics cards and standard cards */
+  .bg-slate-900:hover, .bg-slate-900\/60:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 16px 2px rgba(6, 182, 212, 0.12) !important;
+    border-color: rgba(6, 182, 212, 0.25) !important;
+  }
+
+  /* Glass effect for Modals and overlays */
+  .rounded-3xl.bg-slate-900, .rounded-3xl.bg-slate-900\/60, .rounded-3xl.bg-slate-900\/80 {
+    background-color: rgba(15, 23, 42, 0.8) !important;
+    border-color: rgba(6, 182, 212, 0.15) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 24px 2px rgba(6, 182, 212, 0.08) !important;
+  }
+
+  /* Premium Glass effect for Top Navigation Header */
+  header {
+    background-color: rgba(15, 23, 42, 0.55) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* Primary Button overrides to implement exact linear-gradient and glow on hover */
+  .bg-indigo-600, .bg-indigo-650, .bg-indigo-600\/90, .bg-gradient-to-r.from-indigo-600 {
+    background: linear-gradient(135deg, #06B6D4, #3B82F6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 14px 0 rgba(6, 182, 212, 0.2) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .bg-indigo-600:hover, .bg-indigo-650:hover, .bg-indigo-600\/90:hover, .bg-gradient-to-r.from-indigo-600:hover {
+    background: linear-gradient(135deg, #22D3EE, #3B82F6) !important;
+    box-shadow: 0 6px 20px 0 rgba(6, 182, 212, 0.35), 0 0 15px 4px rgba(6, 182, 212, 0.15) !important;
+    transform: scale(1.02) !important;
+  }
+  
+  .bg-indigo-600:disabled, .bg-indigo-650:disabled {
+    opacity: 0.45 !important;
+    background: #1e293b !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* Active indicator sidebar active gradient */
+  aside button.bg-gradient-to-r {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.18), rgba(59, 130, 246, 0.12)) !important;
+    border-left: 4px solid #06B6D4 !important;
+    color: #F8FAFC !important;
+    box-shadow: inset 0 0 12px 1px rgba(6, 182, 212, 0.04), 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border-top: 1px solid rgba(6, 182, 212, 0.1) !important;
+    border-bottom: 1px solid rgba(6, 182, 212, 0.1) !important;
+    border-right: 1px solid rgba(6, 182, 212, 0.1) !important;
+  }
+
+  /* AI Widget explicit cyan glows and shadows */
+  .border-indigo-500\/30, .border-indigo-550\/30, .border-indigo-500\/20, .bg-indigo-500\/10, .bg-indigo-500\/5 {
+    box-shadow: 0 0 15px -3px rgba(6, 182, 212, 0.1), inset 0 0 8px 1px rgba(6, 182, 212, 0.05) !important;
+    border-color: rgba(6, 182, 212, 0.2) !important;
+  }
+}
+
+/* Glassmorphism scrollbar using Cyan */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -27,12 +101,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(6, 182, 212, 0.2);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.4);
+  background: rgba(6, 182, 212, 0.4);
 }
 
 /* Custom animation classes */

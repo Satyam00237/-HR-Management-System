@@ -1081,9 +1081,9 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
                       contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
                       itemStyle={{ color: '#e2e8f0', fontSize: '11px' }}
                     />
-                    <Bar dataKey="count" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={18}>
+                    <Bar dataKey="count" fill="#06b6d4" radius={[0, 4, 4, 0]} barSize={18}>
                       {funnelData.map((entry, index) => {
-                        const colors = ['#818cf8', '#6366f1', '#4f46e5', '#4338ca', '#10b981'];
+                        const colors = ['#22d3ee', '#06b6d4', '#3b82f6', '#2563eb', '#1d4ed8'];
                         return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
                       })}
                     </Bar>
@@ -1295,8 +1295,8 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -1307,7 +1307,7 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
                     labelStyle={{ color: '#94a3b8', fontSize: '12px', fontWeight: 'bold' }}
                     itemStyle={{ color: '#e2e8f0', fontSize: '12px' }}
                   />
-                  <Area type="monotone" dataKey="cost" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCost)" />
+                  <Area type="monotone" dataKey="cost" stroke="#06b6d4" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCost)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

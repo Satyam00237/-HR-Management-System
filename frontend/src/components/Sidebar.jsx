@@ -36,11 +36,11 @@ export default function Sidebar({ activeTab, setActiveTab, currentRole, currentE
   const items = navItems[currentRole] || [];
 
   return (
-    <aside className="w-64 shrink-0 h-screen bg-slate-900/40 backdrop-blur-md border-r border-slate-800 flex flex-col justify-between sticky top-0">
+    <aside className="w-64 shrink-0 h-screen bg-slate-950 border-r border-slate-900/80 flex flex-col justify-between sticky top-0">
       <div className="flex flex-col">
         {/* Brand Logo */}
-        <div className="h-16 px-6 border-b border-slate-800/80 flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <div className="h-16 px-6 border-b border-slate-900/80 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <Sparkles className="w-4 h-4 text-white animate-pulse" />
           </div>
           <div>
@@ -58,21 +58,21 @@ export default function Sidebar({ activeTab, setActiveTab, currentRole, currentE
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 group ${
                   isActive 
-                    ? 'bg-gradient-to-r from-indigo-600/90 to-violet-600/90 text-white shadow-md shadow-indigo-600/10 border-l-4 border-indigo-400 font-medium' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                    ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/10 border-l-4 border-indigo-450 font-semibold scale-[1.02]' 
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/40 hover:translate-x-1.5'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-5 h-5 transition-transform group-hover:scale-105 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
+                  <Icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-105 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
                   <span className="text-sm">{item.name}</span>
                 </div>
                 {item.badge && (
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full transition-all duration-300 ${
                     item.badge === 'AI' 
-                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' 
-                      : 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 group-hover:bg-indigo-500/30' 
+                      : 'bg-violet-500/20 text-violet-300 border border-violet-500/30 group-hover:bg-violet-500/30'
                   }`}>
                     {item.badge}
                   </span>
