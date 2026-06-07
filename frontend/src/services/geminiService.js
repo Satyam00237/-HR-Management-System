@@ -326,7 +326,7 @@ export const geminiService = {
     }
     
     if (q.includes('salary') || q.includes('pay') || q.includes('money') || q.includes('payslip')) {
-      return `Hi ${name}, your monthly base salary is $${salary.toLocaleString()}. Your latest payslip has been generated for the current month and is ready for download in your dashboard under 'Payslips'.`;
+      return `Hi ${name}, your monthly base salary is ₹${salary.toLocaleString()}. Your latest payslip has been generated for the current month and is ready for download in your dashboard under 'Payslips'.`;
     }
 
     if (q.includes('attendance') || q.includes('check') || q.includes('hours')) {

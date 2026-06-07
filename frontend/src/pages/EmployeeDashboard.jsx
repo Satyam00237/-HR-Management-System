@@ -623,7 +623,7 @@ export default function EmployeeDashboard({ activeSubTab, currentEmployee, refre
               </div>
               <div className="flex justify-between items-center bg-slate-950/20 px-3 py-2 border border-slate-850 rounded-xl">
                 <span className="text-slate-500 font-medium">Monthly Salary</span>
-                <span className="font-semibold text-emerald-450">${currentEmployee.salary.toLocaleString()}</span>
+                <span className="font-semibold text-emerald-450">₹{currentEmployee.salary.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center bg-slate-950/20 px-3 py-2 border border-slate-850 rounded-xl">
                 <span className="text-slate-500 font-medium">Role Level</span>
@@ -790,27 +790,27 @@ export default function EmployeeDashboard({ activeSubTab, currentEmployee, refre
                 <tbody>
                   <tr className="border-b border-slate-150">
                     <td className="py-2.5 px-3">Base Salary</td>
-                    <td className="py-2.5 px-3 text-right">${selectedPayslip.amount.toLocaleString()}</td>
+                    <td className="py-2.5 px-3 text-right">₹{selectedPayslip.amount.toLocaleString()}</td>
                     <td className="py-2.5 px-3">Income Tax (15%)</td>
-                    <td className="py-2.5 px-3 text-right">${(selectedPayslip.amount * 0.15).toLocaleString()}</td>
+                    <td className="py-2.5 px-3 text-right">₹{(selectedPayslip.amount * 0.15).toLocaleString()}</td>
                   </tr>
                   <tr className="border-b border-slate-150">
                     <td className="py-2.5 px-3">HRA Allowance</td>
-                    <td className="py-2.5 px-3 text-right">${(selectedPayslip.amount * 0.10).toLocaleString()}</td>
+                    <td className="py-2.5 px-3 text-right">₹{(selectedPayslip.amount * 0.10).toLocaleString()}</td>
                     <td className="py-2.5 px-3">Provident Fund (4%)</td>
-                    <td className="py-2.5 px-3 text-right">${(selectedPayslip.amount * 0.04).toLocaleString()}</td>
+                    <td className="py-2.5 px-3 text-right">₹{(selectedPayslip.amount * 0.04).toLocaleString()}</td>
                   </tr>
                   <tr className="border-b border-slate-150">
                     <td className="py-2.5 px-3">Special Performance Bonus</td>
-                    <td className="py-2.5 px-3 text-right">$5,000</td>
+                    <td className="py-2.5 px-3 text-right">₹5,000</td>
                     <td className="py-2.5 px-3">Professional Tax</td>
-                    <td className="py-2.5 px-3 text-right">$200</td>
+                    <td className="py-2.5 px-3 text-right">₹200</td>
                   </tr>
                   <tr className="font-bold bg-slate-50">
                     <td className="py-2.5 px-3 text-indigo-700">Gross Earnings</td>
-                    <td className="py-2.5 px-3 text-right text-indigo-700">${(selectedPayslip.amount * 1.1 + 5000).toLocaleString()}</td>
+                    <td className="py-2.5 px-3 text-right text-indigo-700">₹{(selectedPayslip.amount * 1.1 + 5000).toLocaleString()}</td>
                     <td className="py-2.5 px-3 text-rose-700">Total Deductions</td>
-                    <td className="py-2.5 px-3 text-right text-rose-700">${(selectedPayslip.amount * 0.19 + 200).toLocaleString()}</td>
+                    <td className="py-2.5 px-3 text-right text-rose-700">₹{(selectedPayslip.amount * 0.19 + 200).toLocaleString()}</td>
                   </tr>
                 </tbody>
               </table>
@@ -820,7 +820,7 @@ export default function EmployeeDashboard({ activeSubTab, currentEmployee, refre
             <div className="flex justify-between items-center bg-slate-100 p-4 rounded-xl border border-slate-200 mt-6">
               <div>
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Net Take Home Pay</span>
-                <h2 className="text-xl font-extrabold text-indigo-800">${(selectedPayslip.amount * 1.1 + 5000 - (selectedPayslip.amount * 0.19 + 200)).toLocaleString()}</h2>
+                <h2 className="text-xl font-extrabold text-indigo-800">₹{(selectedPayslip.amount * 1.1 + 5000 - (selectedPayslip.amount * 0.19 + 200)).toLocaleString()}</h2>
               </div>
               <button 
                 onClick={() => window.print()}

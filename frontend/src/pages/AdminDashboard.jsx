@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, DollarSign, Briefcase, Calendar, Plus, Search, 
+  Users, IndianRupee, Briefcase, Calendar, Plus, Search, 
   Trash2, FileText, CheckCircle, PlusCircle, Sparkles, BookOpen,
   TrendingUp, Award, Clock, ArrowRight, UserCheck, UserX, Percent,
   Activity, Shield, Database, Cpu, Wifi, RefreshCw, AlertCircle, FileSpreadsheet, Download, ChevronRight, X,
@@ -512,7 +512,7 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
             <td>${e.role}</td>
             <td>${e.status}</td>
             <td>${e.joinDate}</td>
-            <td>$${e.salary.toLocaleString()}</td>
+            <td>₹${e.salary.toLocaleString()}</td>
           </tr>
         `;
       });
@@ -541,11 +541,11 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
           <tr>
             <td>${e.id}</td>
             <td><b>${e.name}</b></td>
-            <td>$${base.toLocaleString()}</td>
-            <td>$${hra.toLocaleString()}</td>
-            <td>-$${tax.toLocaleString()}</td>
-            <td>-$${pf.toLocaleString()}</td>
-            <td style="font-weight:bold;color:#10b981;">$${net.toLocaleString()}</td>
+            <td>₹${base.toLocaleString()}</td>
+            <td>₹${hra.toLocaleString()}</td>
+            <td>-₹${tax.toLocaleString()}</td>
+            <td>-₹${pf.toLocaleString()}</td>
+            <td style="font-weight:bold;color:#10b981;">₹${net.toLocaleString()}</td>
           </tr>
         `;
       });
@@ -904,11 +904,11 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
                   <div className="flex items-center justify-between">
                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Monthly Payroll</span>
                     <div className="w-8 h-8 bg-slate-950/80 rounded-lg flex items-center justify-center border border-slate-800/80 text-emerald-400">
-                      <DollarSign className="w-4 h-4" />
+                      <IndianRupee className="w-4 h-4" />
                     </div>
                   </div>
                   <div className="mt-4">
-                    <h3 className="text-2xl font-bold text-slate-200">${totalSalaryCost.toLocaleString()}</h3>
+                    <h3 className="text-2xl font-bold text-slate-200">₹{totalSalaryCost.toLocaleString()}</h3>
                     <span className="text-[9px] text-slate-500 font-medium">Active Ledger</span>
                   </div>
                 </div>
@@ -1286,7 +1286,7 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
                 <p className="text-[11px] text-slate-500">Six month comparison of operational salary distributions and additions</p>
               </div>
               <div className="flex gap-2">
-                <span className="flex items-center gap-1 text-[10px] text-indigo-400"><div className="w-2.5 h-2.5 rounded bg-indigo-500/20 border border-indigo-400" /> Payroll ($)</span>
+                <span className="flex items-center gap-1 text-[10px] text-indigo-400"><div className="w-2.5 h-2.5 rounded bg-indigo-500/20 border border-indigo-400" /> Payroll (₹)</span>
               </div>
             </div>
             {/* Chart Area */}
@@ -1301,7 +1301,7 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => `$${v/1000}k`} />
+                  <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => `₹${v/1000}k`} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
                     labelStyle={{ color: '#94a3b8', fontSize: '12px', fontWeight: 'bold' }}
@@ -1391,7 +1391,7 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
                           {e.role}
                         </span>
                       </td>
-                      <td className="py-3 pr-2 text-slate-300 font-medium">${e.salary.toLocaleString()}</td>
+                      <td className="py-3 pr-2 text-slate-300 font-medium">₹{e.salary.toLocaleString()}</td>
                       <td className="py-3 pr-2">
                         <button
                           onClick={() => handleToggleStatus(e.id)}
@@ -1481,10 +1481,10 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
                   return (
                     <tr key={e.id} className="hover:bg-slate-950/20">
                       <td className="py-3 px-3 font-semibold text-slate-200">{e.name}</td>
-                      <td className="py-3 px-3 text-slate-400">${base.toLocaleString()}</td>
-                      <td className="py-3 px-3 text-slate-500">${hra.toLocaleString()}</td>
-                      <td className="py-3 px-3 text-rose-500/80">-${tax.toLocaleString()}</td>
-                      <td className="py-3 px-3 text-right font-bold text-emerald-400">${net.toLocaleString()}</td>
+                      <td className="py-3 px-3 text-slate-400">₹{base.toLocaleString()}</td>
+                      <td className="py-3 px-3 text-slate-500">₹{hra.toLocaleString()}</td>
+                      <td className="py-3 px-3 text-rose-500/80">-₹{tax.toLocaleString()}</td>
+                      <td className="py-3 px-3 text-right font-bold text-emerald-400">₹{net.toLocaleString()}</td>
                     </tr>
                   );
                 })}
@@ -2047,9 +2047,9 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
                             <td className="py-2.5">{e.id}</td>
                             <td className="py-2.5 font-bold text-slate-350">{e.name}</td>
                             <td className="py-2.5 text-slate-500">{e.email}</td>
-                            <td className="py-2.5 text-slate-400">{e.department}</td>
+                            <td className="py-2.5 text-slate-450">{e.department}</td>
                             <td className="py-2.5">{e.status}</td>
-                            <td className="py-2.5 text-right font-medium text-slate-300">${e.salary.toLocaleString()}</td>
+                            <td className="py-2.5 text-right font-medium text-slate-300">₹{e.salary.toLocaleString()}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -2077,10 +2077,10 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
                           return (
                             <tr key={e.id} className="hover:bg-slate-950/20">
                               <td className="py-2.5 font-bold text-slate-355">{e.name}</td>
-                              <td className="py-2.5 text-slate-400">${base.toLocaleString()}</td>
-                              <td className="py-2.5 text-slate-500">${hra.toLocaleString()}</td>
-                              <td className="py-2.5 text-rose-500/80">-${tax.toLocaleString()}</td>
-                              <td className="py-2.5 text-right font-bold text-emerald-400">${net.toLocaleString()}</td>
+                              <td className="py-2.5 text-slate-400">₹{base.toLocaleString()}</td>
+                              <td className="py-2.5 text-slate-500">₹{hra.toLocaleString()}</td>
+                              <td className="py-2.5 text-rose-500/80">-₹{tax.toLocaleString()}</td>
+                              <td className="py-2.5 text-right font-bold text-emerald-400">₹{net.toLocaleString()}</td>
                             </tr>
                           );
                         })}
@@ -2229,7 +2229,7 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase">Monthly Salary ($)</label>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase">Monthly Salary (₹)</label>
                 <input
                   type="number"
                   required
@@ -2358,7 +2358,7 @@ export default function AdminDashboard({ activeSubTab, setActiveTab, currentUser
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase">Monthly Salary ($)</label>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase">Monthly Salary (₹)</label>
                 <input
                   type="number"
                   required
