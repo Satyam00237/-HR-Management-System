@@ -27,18 +27,36 @@ if (!cachedConnection) {
   cachedConnection = global.mongoose = { conn: null, promise: null };
 }
 
+function resetConnectionCache() {
+  cachedConnection.conn = null;
+  cachedConnection.promise = null;
+}
+
 async function connectMongo() {
-  if (cachedConnection.conn) {
+  if (mongoose.connection.readyState === 1) {
+    cachedConnection.conn = mongoose.connection;
     return cachedConnection.conn;
   }
+
   if (!cachedConnection.promise) {
     cachedConnection.promise = mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      bufferCommands: false
-    }).then((mongooseInstance) => mongooseInstance);
+      serverSelectionTimeoutMS: 15000,
+      socketTimeoutMS: 45000,
+      bufferCommands: false,
+      maxPoolSize: 10,
+      family: 4
+    })
+      .then((mongooseInstance) => {
+        cachedConnection.conn = mongooseInstance.connection;
+        return cachedConnection.conn;
+      })
+      .catch((err) => {
+        resetConnectionCache();
+        throw err;
+      });
   }
-  cachedConnection.conn = await cachedConnection.promise;
-  return cachedConnection.conn;
+
+  return cachedConnection.promise;
 }
 
 export const db = {
@@ -47,10 +65,19 @@ export const db = {
   _initPromise: null,
 
   async ensureConnected() {
-    if (this.isMongoConnected) return true;
-    if (!this._initPromise) {
-      this._initPromise = this.init();
+    if (this.isMongoConnected && mongoose.connection.readyState === 1) {
+      return true;
     }
+
+    if (!this._initPromise) {
+      this._initPromise = this.init().finally(() => {
+        if (!this.isMongoConnected) {
+          this._initPromise = null;
+          resetConnectionCache();
+        }
+      });
+    }
+
     await this._initPromise;
     return this.isMongoConnected;
   },

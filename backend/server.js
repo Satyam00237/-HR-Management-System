@@ -95,13 +95,13 @@ const authorizeRoles = (...allowedRoles) => {
 
 // --- API Endpoints ---
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+  await db.ensureConnected();
   const rawUri = process.env.MONGODB_URI || '';
   const maskedUri = rawUri.replace(/(mongodb\+srv:\/\/[^:]+:)[^@]+@/, '$1****@');
   res.json({
     message: 'SmartHRMS API is running successfully.',
-    status: 'healthy',
-    uri: rawUri,
+    status: db.isMongoConnected ? 'healthy' : 'degraded',
     isMongoConnected: db.isMongoConnected,
     connectionError: db.connectionError,
     mongoUriMasked: maskedUri || null,
@@ -866,8 +866,9 @@ app.post('/api/settings/key', authenticateToken, authorizeRoles('Admin'), async 
   }
 });
 
-// Database connection status debug route
-app.get('/api/db-status', (req, res) => {
+// Database connection status debug route (actively tries to connect)
+app.get('/api/db-status', async (req, res) => {
+  await db.ensureConnected();
   res.json({
     isMongoConnected: db.isMongoConnected,
     connectionError: db.connectionError,
