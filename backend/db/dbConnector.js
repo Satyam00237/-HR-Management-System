@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import dns from 'dns';
+import { getDefaultSeedData } from './seedData.js';
 
 // Force DNS resolution to prefer IPv4 (fixes MongoDB Atlas connection issues on IPv6 networks)
 dns.setDefaultResultOrder('ipv4first');
@@ -20,27 +21,79 @@ dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  console.error("CRITICAL ERROR: MONGODB_URI environment variable is missing in process.env.");
-  process.exit(1);
+// Reuse MongoDB connection across Vercel serverless invocations
+let cachedConnection = global.mongoose;
+if (!cachedConnection) {
+  cachedConnection = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectMongo() {
+  if (cachedConnection.conn) {
+    return cachedConnection.conn;
+  }
+  if (!cachedConnection.promise) {
+    cachedConnection.promise = mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+      bufferCommands: false
+    }).then((mongooseInstance) => mongooseInstance);
+  }
+  cachedConnection.conn = await cachedConnection.promise;
+  return cachedConnection.conn;
 }
 
 export const db = {
   isMongoConnected: false,
   connectionError: null,
+  _initPromise: null,
+
+  async ensureConnected() {
+    if (this.isMongoConnected) return true;
+    if (!this._initPromise) {
+      this._initPromise = this.init();
+    }
+    await this._initPromise;
+    return this.isMongoConnected;
+  },
+
   async init() {
+    if (!MONGODB_URI) {
+      this.connectionError = 'MONGODB_URI environment variable is not configured.';
+      console.error(this.connectionError);
+      return;
+    }
+
     try {
-      console.log(`Connecting to MongoDB at ${MONGODB_URI}...`);
-      await mongoose.connect(MONGODB_URI, {
-        serverSelectionTimeoutMS: 5000
-      });
+      console.log('Connecting to MongoDB...');
+      await connectMongo();
       console.log('MongoDB connected successfully.');
       this.isMongoConnected = true;
       this.connectionError = null;
+      await this.seedIfEmpty();
     } catch (err) {
       console.error('Failed to initialize database connector (MongoDB connection failed):', err);
       this.isMongoConnected = false;
       this.connectionError = err.message || String(err);
+    }
+  },
+
+  async seedIfEmpty() {
+    try {
+      const empCount = await Employee.countDocuments();
+      if (empCount > 0) return;
+
+      console.log('MongoDB is empty — seeding demo data...');
+      const seed = getDefaultSeedData();
+
+      if (seed.employees?.length) await Employee.insertMany(seed.employees);
+      if (seed.attendance?.length) await Attendance.insertMany(seed.attendance);
+      if (seed.leaves?.length) await Leave.insertMany(seed.leaves);
+      if (seed.jobs?.length) await Job.insertMany(seed.jobs);
+      if (seed.candidates?.length) await Candidate.insertMany(seed.candidates);
+      if (seed.policies?.length) await Policy.insertMany(seed.policies);
+
+      console.log('Demo data seeded successfully.');
+    } catch (err) {
+      console.error('Failed to seed database:', err);
     }
   },
 
@@ -449,6 +502,4 @@ export const db = {
   }
 };
 
-// Initialize data files / connection on start
-db.init();
 export default db;

@@ -13,8 +13,7 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
-  console.error("CRITICAL ERROR: JWT_SECRET environment variable is missing.");
-  process.exit(1);
+  console.error('WARNING: JWT_SECRET environment variable is missing. Auth endpoints will fail.');
 }
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -42,6 +41,21 @@ app.use(cors({
 
 app.use(express.json());
 
+// Ensure MongoDB is connected before API requests (required on Vercel serverless)
+app.use(async (req, res, next) => {
+  const isHealthRoute = req.path === '/' || req.path === '/api' || req.path === '/api/db-status';
+  if (isHealthRoute) return next();
+
+  const connected = await db.ensureConnected();
+  if (!connected && req.path.startsWith('/api')) {
+    return res.status(503).json({
+      error: 'Database unavailable. Set MONGODB_URI in Vercel environment variables.',
+      details: db.connectionError
+    });
+  }
+  next();
+});
+
 // Logger middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
@@ -55,6 +69,10 @@ const authenticateToken = (req, res, next) => {
 
   if (!token) {
     return res.status(401).json({ error: 'Access denied. Authentication token missing.' });
+  }
+
+  if (!JWT_SECRET) {
+    return res.status(503).json({ error: 'Server misconfigured: JWT_SECRET is not set.' });
   }
 
   try {
@@ -381,6 +399,10 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Missing email or password' });
+    }
+
+    if (!JWT_SECRET) {
+      return res.status(503).json({ error: 'Server misconfigured: JWT_SECRET is not set.' });
     }
 
     const employees = await db.getEmployees();
@@ -854,10 +876,16 @@ app.get('/api/db-status', (req, res) => {
   });
 });
 
-// App listener
-app.listen(PORT, () => {
-  console.log(`===============================================`);
-  console.log(`  SmartHRMS Backend API running on port ${PORT} `);
-  console.log(`  Targeting database: MongoDB                   `);
-  console.log(`===============================================`);
-});
+// App listener (local dev only — Vercel uses serverless export below)
+if (!process.env.VERCEL) {
+  db.ensureConnected().then(() => {
+    app.listen(PORT, () => {
+      console.log(`===============================================`);
+      console.log(`  SmartHRMS Backend API running on port ${PORT} `);
+      console.log(`  Targeting database: MongoDB                   `);
+      console.log(`===============================================`);
+    });
+  });
+}
+
+export default app;
