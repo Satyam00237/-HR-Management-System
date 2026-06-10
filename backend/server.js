@@ -22,8 +22,6 @@ const PORT = process.env.PORT || 5000;
 
 // Enable CORS for frontend Vite development server and production/Vercel URLs
 const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
@@ -114,6 +112,7 @@ app.post('/api/candidate/auth/register', async (req, res) => {
     }
 
     const newSeeker = await db.addJobSeeker({ name, email, password });
+    console.log(newSeeker);
 
     const token = jwt.sign(
       { email: newSeeker.email, name: newSeeker.name, role: 'Candidate' },
@@ -138,7 +137,6 @@ app.post('/api/candidate/auth/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ error: 'Missing email or password' });
     }
-
     const seeker = await db.getJobSeeker(email);
     if (!seeker || seeker.password !== password) {
       return res.status(401).json({ error: 'Invalid candidate credentials.' });
