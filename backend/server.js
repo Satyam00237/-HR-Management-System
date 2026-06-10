@@ -83,6 +83,8 @@ app.get('/', (req, res) => {
   res.json({
     message: 'SmartHRMS API is running successfully.',
     status: 'healthy',
+    isMongoConnected: db.isMongoConnected,
+    connectionError: db.connectionError,
     timestamp: new Date()
   });
 });
@@ -182,6 +184,9 @@ app.put('/api/candidate/profile', authenticateToken, async (req, res) => {
       education,
       experience
     });
+    if (!updated) {
+      return res.status(404).json({ error: 'Profile not found.' });
+    }
     res.json(updated);
   } catch (e) {
     res.status(500).json({ error: 'Failed to update profile.' });
@@ -377,7 +382,17 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const employees = await db.getEmployees();
-    const user = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
+    let user = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
+    let isCandidate = false;
+
+    if (!user) {
+      // Fallback: Check JobSeekers (Candidates)
+      const seeker = await db.getJobSeeker(email);
+      if (seeker) {
+        user = seeker;
+        isCandidate = true;
+      }
+    }
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials. User not found.' });
@@ -390,17 +405,19 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, name: user.name, email: user.email, role: user.role },
+      isCandidate
+        ? { email: user.email, name: user.name, role: 'Candidate' }
+        : { id: user.id, name: user.name, email: user.email, role: user.role },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
 
     res.json({
-      id: user.id,
+      id: isCandidate ? undefined : user.id,
       name: user.name,
       email: user.email,
-      role: user.role,
-      avatar: user.avatar,
+      role: isCandidate ? 'Candidate' : user.role,
+      avatar: isCandidate ? undefined : user.avatar,
       token
     });
   } catch (e) {
