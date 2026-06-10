@@ -85,6 +85,7 @@ app.get('/', (req, res) => {
   res.json({
     message: 'SmartHRMS API is running successfully.',
     status: 'healthy',
+    uri: rawUri,
     isMongoConnected: db.isMongoConnected,
     connectionError: db.connectionError,
     mongoUriMasked: maskedUri || null,
