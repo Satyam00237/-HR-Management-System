@@ -80,11 +80,14 @@ const authorizeRoles = (...allowedRoles) => {
 // --- API Endpoints ---
 
 app.get('/', (req, res) => {
+  const rawUri = process.env.MONGODB_URI || '';
+  const maskedUri = rawUri.replace(/:([^@]+)@/, ':****@');
   res.json({
     message: 'SmartHRMS API is running successfully.',
     status: 'healthy',
     isMongoConnected: db.isMongoConnected,
     connectionError: db.connectionError,
+    mongoUriMasked: maskedUri || null,
     timestamp: new Date()
   });
 });
