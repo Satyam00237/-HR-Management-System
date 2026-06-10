@@ -1,4 +1,5 @@
 let API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+console.log("API_BASE =", API_BASE);
 if (API_BASE && !API_BASE.endsWith('/api')) {
   API_BASE = API_BASE.replace(/\/$/, '') + '/api';
 }
